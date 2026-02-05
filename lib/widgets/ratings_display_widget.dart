@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/rating.dart';
 import '../models/rating_statistics.dart';
 import '../services/ratings_service.dart';

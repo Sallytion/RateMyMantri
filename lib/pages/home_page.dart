@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/constituency.dart';
 import '../services/constituency_service.dart';
 import 'constituency_search_page.dart';
