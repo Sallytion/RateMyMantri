@@ -1,0 +1,193 @@
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
+/// Cache service for storing images and data on device
+/// Cache is cleared when app is closed from recent apps
+class CacheService {
+  static const String _imagesCacheDir = 'images_cache';
+  static const String _dataCacheDir = 'data_cache';
+
+  /// Get cache directory for images
+  static Future<Directory> _getImagesCacheDir() async {
+    final appDir = await getTemporaryDirectory();
+    final cacheDir = Directory('${appDir.path}/$_imagesCacheDir');
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+    return cacheDir;
+  }
+
+  /// Get cache directory for data
+  static Future<Directory> _getDataCacheDir() async {
+    final appDir = await getTemporaryDirectory();
+    final cacheDir = Directory('${appDir.path}/$_dataCacheDir');
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+    return cacheDir;
+  }
+
+  /// Generate cache key from URL
+  static String _getCacheKey(String url) {
+    final bytes = utf8.encode(url);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Cache an image from URL
+  static Future<String?> cacheImage(String imageUrl) async {
+    try {
+      final cacheDir = await _getImagesCacheDir();
+      final cacheKey = _getCacheKey(imageUrl);
+      final extension = imageUrl.split('.').last.split('?').first;
+      final cachedFile = File('${cacheDir.path}/$cacheKey.$extension');
+
+      // Check if already cached
+      if (await cachedFile.exists()) {
+        return cachedFile.path;
+      }
+
+      // Download and cache
+      final response = await http
+          .get(
+            Uri.parse(imageUrl),
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        await cachedFile.writeAsBytes(response.bodyBytes);
+        return cachedFile.path;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get cached image path if exists
+  static Future<String?> getCachedImage(String imageUrl) async {
+    try {
+      final cacheDir = await _getImagesCacheDir();
+      final cacheKey = _getCacheKey(imageUrl);
+
+      // Try common image extensions
+      for (final ext in ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
+        final cachedFile = File('${cacheDir.path}/$cacheKey.$ext');
+        if (await cachedFile.exists()) {
+          return cachedFile.path;
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Cache JSON data
+  static Future<bool> cacheData(String key, Map<String, dynamic> data) async {
+    try {
+      final cacheDir = await _getDataCacheDir();
+      final cacheKey = _getCacheKey(key);
+      final cachedFile = File('${cacheDir.path}/$cacheKey.json');
+
+      await cachedFile.writeAsString(jsonEncode(data));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get cached JSON data
+  static Future<Map<String, dynamic>?> getCachedData(String key) async {
+    try {
+      final cacheDir = await _getDataCacheDir();
+      final cacheKey = _getCacheKey(key);
+      final cachedFile = File('${cacheDir.path}/$cacheKey.json');
+
+      if (await cachedFile.exists()) {
+        final content = await cachedFile.readAsString();
+        return jsonDecode(content) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Clear all cache (called when app is closed)
+  static Future<void> clearAllCache() async {
+    try {
+      final imagesCacheDir = await _getImagesCacheDir();
+      final dataCacheDir = await _getDataCacheDir();
+
+      if (await imagesCacheDir.exists()) {
+        await imagesCacheDir.delete(recursive: true);
+      }
+      if (await dataCacheDir.exists()) {
+        await dataCacheDir.delete(recursive: true);
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  /// Clear only images cache
+  static Future<void> clearImagesCache() async {
+    try {
+      final imagesCacheDir = await _getImagesCacheDir();
+      if (await imagesCacheDir.exists()) {
+        await imagesCacheDir.delete(recursive: true);
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  /// Clear only data cache
+  static Future<void> clearDataCache() async {
+    try {
+      final dataCacheDir = await _getDataCacheDir();
+      if (await dataCacheDir.exists()) {
+        await dataCacheDir.delete(recursive: true);
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  /// Get cache size in bytes
+  static Future<int> getCacheSize() async {
+    try {
+      int totalSize = 0;
+      final imagesCacheDir = await _getImagesCacheDir();
+      final dataCacheDir = await _getDataCacheDir();
+
+      if (await imagesCacheDir.exists()) {
+        await for (final file in imagesCacheDir.list(recursive: true)) {
+          if (file is File) {
+            totalSize += await file.length();
+          }
+        }
+      }
+
+      if (await dataCacheDir.exists()) {
+        await for (final file in dataCacheDir.list(recursive: true)) {
+          if (file is File) {
+            totalSize += await file.length();
+          }
+        }
+      }
+
+      return totalSize;
+    } catch (e) {
+      return 0;
+    }
+  }
+}
