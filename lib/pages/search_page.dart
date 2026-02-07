@@ -9,6 +9,9 @@ class SearchPage extends StatefulWidget {
 
   const SearchPage({super.key, required this.isDarkMode});
 
+  /// Global key so MainScreen can call methods on the state.
+  static final GlobalKey<_SearchPageState> globalKey = GlobalKey<_SearchPageState>();
+
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
@@ -17,10 +20,25 @@ class _SearchPageState extends State<SearchPage> {
   final RepresentativeService _representativeService = RepresentativeService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+
+  // ─── Static in-memory cache (survives widget rebuilds) ─────────
+  static List<Representative>? _cachedResults;
+  static String? _cachedQuery;
+
+  /// Call this to force-clear cached search data.
+  static void clearCache() {
+    _cachedResults = null;
+    _cachedQuery = null;
+  }
   
   List<Representative> _searchResults = [];
   bool _isSearching = false;
   Timer? _debounceTimer;
+
+  /// Called from MainScreen when user double-taps the search nav tab.
+  void focusSearchBar() {
+    _searchFocusNode.requestFocus();
+  }
 
   @override
   void initState() {
@@ -32,11 +50,14 @@ class _SearchPageState extends State<SearchPage> {
         });
       }
     });
-    
-    // Auto-focus search bar when page loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
-    });
+
+    // Restore cached search query & results if available
+    if (_cachedQuery != null && _cachedQuery!.isNotEmpty) {
+      _searchController.text = _cachedQuery!;
+      if (_cachedResults != null) {
+        _searchResults = _cachedResults!;
+      }
+    }
   }
 
   @override
@@ -53,6 +74,8 @@ class _SearchPageState extends State<SearchPage> {
         _searchResults = [];
         _isSearching = false;
       });
+      _cachedQuery = null;
+      _cachedResults = null;
       _debounceTimer?.cancel();
       return;
     }
@@ -71,6 +94,8 @@ class _SearchPageState extends State<SearchPage> {
         final results = (response['results'] as List?)?.cast<Representative>() ?? [];
 
         if (mounted) {
+          _cachedQuery = query;
+          _cachedResults = results;
           setState(() {
             _searchResults = results;
             _isSearching = false;
@@ -224,6 +249,8 @@ class _SearchPageState extends State<SearchPage> {
                                       ),
                                       onPressed: () {
                                         _searchController.clear();
+                                        _cachedQuery = null;
+                                        _cachedResults = null;
                                         setState(() {
                                           _searchResults = [];
                                         });

@@ -65,13 +65,35 @@ class _NewsPageState extends State<NewsPage>
   final SavedArticlesService _savedArticlesService = SavedArticlesService();
   final Set<String> _savedArticleLinks = {};
 
+  // ─── Static per-tag cache (survives widget rebuilds) ───────────
+  static final Map<String, List<Article>> _cachedArticlesByTag = {};
+  static final Map<String, Map<int, String>> _cachedImagesByTag = {};
+  static String? _cachedSelectedTag;
+
+  /// Call this to force-clear all cached news data.
+  static void clearCache() {
+    _cachedArticlesByTag.clear();
+    _cachedImagesByTag.clear();
+    _cachedSelectedTag = null;
+  }
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _fetchFeed();
+    // Restore last selected tag and cached data if available
+    if (_cachedSelectedTag != null) {
+      _selectedTag = _cachedSelectedTag!;
+    }
+    if (_cachedArticlesByTag.containsKey(_selectedTag)) {
+      _articles = _cachedArticlesByTag[_selectedTag]!;
+      _imageCache.clear();
+      _imageCache.addAll(_cachedImagesByTag[_selectedTag] ?? {});
+    } else {
+      _fetchFeed();
+    }
     _pageController.addListener(_onPageChanged);
     _loadSavedArticles();
   }
@@ -99,7 +121,23 @@ class _NewsPageState extends State<NewsPage>
 
   Future<void> _fetchFeed({
     String url = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en',
+    String? tag,
   }) async {
+    final effectiveTag = tag ?? _selectedTag;
+
+    // Check per-tag cache first
+    if (_cachedArticlesByTag.containsKey(effectiveTag)) {
+      setState(() {
+        _articles = _cachedArticlesByTag[effectiveTag]!;
+        _imageCache.clear();
+        _imageCache.addAll(_cachedImagesByTag[effectiveTag] ?? {});
+        _processingIndices.clear();
+        _loading = false;
+        _error = '';
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = '';
@@ -128,6 +166,10 @@ class _NewsPageState extends State<NewsPage>
           ),
         );
       }
+
+      // Store in per-tag cache
+      _cachedArticlesByTag[effectiveTag] = parsed;
+      _cachedImagesByTag[effectiveTag] = {};
 
       setState(() {
         _articles = parsed;
@@ -193,6 +235,8 @@ class _NewsPageState extends State<NewsPage>
       setState(() {
         _imageCache[index] = imageUrl;
       });
+      // Sync image back to per-tag cache
+      _cachedImagesByTag[_selectedTag]?[index] = imageUrl;
     }
 
     _processingIndices.remove(index);
@@ -318,8 +362,14 @@ class _NewsPageState extends State<NewsPage>
                         setState(() {
                           _selectedTag = t;
                         });
+                        _cachedSelectedTag = t;
 
                         if (t == 'Local') {
+                          // Check cache first for Local
+                          if (_cachedArticlesByTag.containsKey('Local')) {
+                            await _fetchFeed(tag: 'Local');
+                            return;
+                          }
                           final loc = await _getCityFromIp();
                           if (loc != null) {
                             if (mounted) {
@@ -331,14 +381,14 @@ class _NewsPageState extends State<NewsPage>
                               );
                             }
                             final url = _buildGNewsUrlForCity(loc['city']!, loc['country']!);
-                            await _fetchFeed(url: url);
+                            await _fetchFeed(url: url, tag: 'Local');
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Could not detect location — showing default news')),
                               );
                             }
-                            await _fetchFeed();
+                            await _fetchFeed(tag: 'Local');
                           }
                           return;
                         }
@@ -355,7 +405,7 @@ class _NewsPageState extends State<NewsPage>
                           'World': 'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en',
                           'India': 'https://news.google.com/rss/headlines/section/topic/NATION?hl=en-IN&gl=IN&ceid=IN:en',
                         };
-                        await _fetchFeed(url: map[t] ?? map['All']!);
+                        await _fetchFeed(url: map[t] ?? map['All']!, tag: t);
                       },
                     );
                   },

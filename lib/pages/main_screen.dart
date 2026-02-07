@@ -57,24 +57,29 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _pages = [
-      HomePage(isDarkMode: _isDarkMode),
-      SearchPage(isDarkMode: _isDarkMode),
-      RatePage(isDarkMode: _isDarkMode, isVerified: widget.isVerified),
-      NewsPage(isDarkMode: _isDarkMode),
-      ProfilePage(
-        isDarkMode: _isDarkMode,
-        onDarkModeToggle: _toggleDarkMode,
-        userName: widget.userName,
-        isVerified: widget.isVerified,
-        userEmail: widget.userEmail,
-        userId: widget.userId,
-        photoUrl: widget.photoUrl,
-      ),
-    ];
-
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          HomePage(isDarkMode: _isDarkMode, onNavigateToTab: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          }),
+          SearchPage(key: SearchPage.globalKey, isDarkMode: _isDarkMode),
+          RatePage(isDarkMode: _isDarkMode, isVerified: widget.isVerified),
+          NewsPage(isDarkMode: _isDarkMode),
+          ProfilePage(
+            isDarkMode: _isDarkMode,
+            onDarkModeToggle: _toggleDarkMode,
+            userName: widget.userName,
+            isVerified: widget.isVerified,
+            userEmail: widget.userEmail,
+            userId: widget.userId,
+            photoUrl: widget.photoUrl,
+          ),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
@@ -130,6 +135,10 @@ class _MainScreenState extends State<MainScreen> {
               ],
               selectedIndex: _currentIndex,
               onTabChange: (index) {
+                if (index == 1 && _currentIndex == 1) {
+                  // Double-tap on Search tab: focus the search bar
+                  SearchPage.globalKey.currentState?.focusSearchBar();
+                }
                 setState(() {
                   _currentIndex = index;
                 });

@@ -58,6 +58,81 @@ class RepresentativeService {
     }
   }
 
+  /// Fetch representatives for a given constituency/location name
+  Future<Map<String, dynamic>> getMyRepresentatives(String location) async {
+    try {
+      final uri = Uri.parse('$baseUrl/my-representatives').replace(
+        queryParameters: {'location': location},
+      );
+
+      print('Fetching my representatives: $uri');
+      final response = await http.get(uri);
+      print('My-representatives response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final reps = data['representatives'] ?? {};
+          final List<Representative> allReps = [];
+
+          // Parse MLA list
+          if (reps['mla'] != null && reps['mla'] is List) {
+            for (var json in reps['mla']) {
+              try {
+                allReps.add(Representative.fromJson(json));
+              } catch (e) {
+                print('Error parsing MLA: $e');
+              }
+            }
+          }
+
+          // Parse Lok Sabha member
+          if (reps['lokSabha'] != null && reps['lokSabha'] is Map) {
+            try {
+              allReps.add(Representative.fromJson(reps['lokSabha']));
+            } catch (e) {
+              print('Error parsing Lok Sabha: $e');
+            }
+          }
+
+          // Parse Rajya Sabha members
+          if (reps['rajyaSabha'] != null && reps['rajyaSabha'] is List) {
+            for (var json in reps['rajyaSabha']) {
+              try {
+                allReps.add(Representative.fromJson(json));
+              } catch (e) {
+                print('Error parsing Rajya Sabha: $e');
+              }
+            }
+          }
+
+          // Parse Vidhan Parishad members
+          if (reps['vidhanParishad'] != null && reps['vidhanParishad'] is List) {
+            for (var json in reps['vidhanParishad']) {
+              try {
+                allReps.add(Representative.fromJson(json));
+              } catch (e) {
+                print('Error parsing Vidhan Parishad: $e');
+              }
+            }
+          }
+
+          return {
+            'success': true,
+            'representatives': allReps,
+            'location': data['location'],
+          };
+        }
+      }
+
+      return {'success': false, 'representatives': <Representative>[]};
+    } catch (e, stackTrace) {
+      print('Error fetching my representatives: $e');
+      print('Stack trace: $stackTrace');
+      return {'success': false, 'representatives': <Representative>[]};
+    }
+  }
+
   Future<RepresentativeDetail?> getRepresentativeById(String id) async {
     try {
       final uri = Uri.parse('$baseUrl/representatives/$id');

@@ -20,6 +20,17 @@ class RatePage extends StatefulWidget {
 
 class _RatePageState extends State<RatePage> {
   final RatingsService _ratingsService = RatingsService();
+
+  // ─── Static in-memory cache (survives widget rebuilds) ─────────
+  static List<Rating>? _cachedRatings;
+  static bool? _cachedIsAuthenticated;
+
+  /// Call this to force-clear cached data (e.g. after submitting a new rating from another page).
+  static void clearCache() {
+    _cachedRatings = null;
+    _cachedIsAuthenticated = null;
+  }
+
   List<Rating> _userRatings = [];
   bool _isLoading = true;
   bool _isAuthenticated = false;
@@ -31,18 +42,31 @@ class _RatePageState extends State<RatePage> {
   }
 
   Future<void> _checkAuthAndLoadRatings() async {
+    // Use cache if available
+    if (_cachedIsAuthenticated != null && _cachedRatings != null) {
+      setState(() {
+        _isAuthenticated = _cachedIsAuthenticated!;
+        _userRatings = _cachedRatings!;
+        _isLoading = false;
+      });
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       _isAuthenticated = await AuthStorageService.isAuthenticated();
+      _cachedIsAuthenticated = _isAuthenticated;
 
       if (_isAuthenticated) {
         final ratings = await _ratingsService.getCurrentUserRatings();
+        _cachedRatings = ratings;
         setState(() {
           _userRatings = ratings;
           _isLoading = false;
         });
       } else {
+        _cachedRatings = [];
         setState(() => _isLoading = false);
       }
     } catch (e) {
@@ -195,6 +219,8 @@ class _RatePageState extends State<RatePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Rating deleted successfully')),
           );
+          // Invalidate cache and refetch
+          clearCache();
           _checkAuthAndLoadRatings();
         }
       } catch (e) {
@@ -224,6 +250,8 @@ class _RatePageState extends State<RatePage> {
           isVerified: widget.isVerified,
           existingRating: rating,
           onRatingSubmitted: () {
+            // Invalidate cache and refetch after editing
+            clearCache();
             _checkAuthAndLoadRatings();
           },
         ),
