@@ -43,3 +43,18 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase and API keys - DO NOT COMMIT
+**/google-services.json
+**/GoogleService-Info.plist
+lib/firebase_options.dart
+.env
+.env.local
+.env.*.local
+**/*.env
+**/apiKeys.dart
+**/secrets.dart
+
+# Notification scripts with tokens
+send_notification.ps1
+**/*_notification*.ps1

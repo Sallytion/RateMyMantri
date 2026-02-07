@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'pages/google_sign_in_page.dart';
 import 'pages/main_screen.dart';
 import 'services/auth_storage_service.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase in the background (don't block app startup)
+  _initializeFirebase();
   
   // Set system UI overlay style to dark by default
   SystemChrome.setSystemUIOverlayStyle(
@@ -18,6 +24,25 @@ void main() {
   );
   
   runApp(const MyApp());
+}
+
+Future<void> _initializeFirebase() async {
+  try {
+    debugPrint('🔥 Initializing Firebase...');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('✅ Firebase initialized successfully');
+    
+    // Initialize notifications and subscribe to 'general' topic
+    debugPrint('📲 Starting notification service initialization...');
+    await NotificationService.initialize();
+    debugPrint('✅ Notifications initialized successfully');
+  } catch (e, stackTrace) {
+    debugPrint('⚠️ Firebase initialization error: $e');
+    debugPrint('⚠️ Stack trace: $stackTrace');
+    debugPrint('⚠️ App will continue without push notifications');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -49,13 +74,7 @@ class MyApp extends StatelessWidget {
         dialogBackgroundColor: const Color(0xFF2A2A2A),
         useMaterial3: true,
       ),
-      themeMode: ThemeMode.dark,
-      builder: (context, child) {
-        return Container(
-          color: const Color(0xFF1A1A1A),
-          child: child,
-        );
-      },
+      themeMode: ThemeMode.system,
       home: const AuthChecker(),
     );
   }
@@ -72,56 +91,76 @@ class _AuthCheckerState extends State<AuthChecker> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🔍 AuthChecker: Starting auth check...');
     _checkAuth();
   }
 
   Future<void> _checkAuth() async {
-    // Check if user has valid tokens
-    final isAuthenticated = await AuthStorageService.isAuthenticated();
+    try {
+      debugPrint('🔍 AuthChecker: Checking if authenticated...');
+      // Check if user has valid tokens
+      final isAuthenticated = await AuthStorageService.isAuthenticated();
+      debugPrint('🔍 AuthChecker: isAuthenticated = $isAuthenticated');
 
-    if (isAuthenticated) {
-      // Try to fetch user profile to verify token is still valid
-      final userData = await AuthStorageService.fetchUserProfile();
+      if (isAuthenticated) {
+        debugPrint('🔍 AuthChecker: Fetching user profile...');
+        // Try to fetch user profile to verify token is still valid
+        final userData = await AuthStorageService.fetchUserProfile();
+        debugPrint('🔍 AuthChecker: userData = $userData');
 
-      if (userData != null && mounted) {
-        // User is authenticated, get verification status
-        final isVerified =
-            await AuthStorageService.getAadhaarVerificationStatus();
+        if (userData != null && mounted) {
+          // User is authenticated, get verification status
+          final isVerified =
+              await AuthStorageService.getAadhaarVerificationStatus();
+          debugPrint('🔍 AuthChecker: Navigating to MainScreen...');
 
-        // Navigate to main screen with user data
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => MainScreen(
-              userName: userData['name'] ?? 'User',
-              isVerified: isVerified,
-              userEmail: userData['email'],
-              userId: userData['googleId'],
-              photoUrl: userData['picture'],
+          // Navigate to main screen with user data
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => MainScreen(
+                userName: userData['name'] ?? 'User',
+                isVerified: isVerified,
+                userEmail: userData['email'],
+                userId: userData['googleId'],
+                photoUrl: userData['picture'],
+              ),
             ),
-          ),
-        );
+          );
+        } else if (mounted) {
+          debugPrint('🔍 AuthChecker: Token invalid, navigating to login...');
+          // Token invalid or expired, clear auth and show login
+          await AuthStorageService.clearAuthData();
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const GoogleSignInPage()),
+          );
+        }
       } else if (mounted) {
-        // Token invalid or expired, clear auth and show login
-        await AuthStorageService.clearAuthData();
+        debugPrint('🔍 AuthChecker: Not authenticated, navigating to login...');
+        // No tokens found, show login screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const GoogleSignInPage()),
         );
       }
-    } else if (mounted) {
-      // No tokens found, show login screen
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const GoogleSignInPage()),
-      );
+    } catch (e, stackTrace) {
+      debugPrint('❌ AuthChecker error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // On error, go to login screen
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const GoogleSignInPage()),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     // Show a loading screen while checking auth
-    return const Scaffold(
-      backgroundColor: Color(0xFF1A1A1A),
+    return Scaffold(
       body: Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }

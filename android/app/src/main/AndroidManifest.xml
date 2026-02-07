@@ -4,8 +4,12 @@
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
     
+    <!-- FCM Permissions -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    
     <application
-        android:label="rate_my_mantri"
+        android:label="Rate My Mantri"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

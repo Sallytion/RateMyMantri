@@ -227,8 +227,10 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -237,40 +239,38 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
             children: [
               const SizedBox(height: 80),
 
-              // App Logo/Icon
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4285F4).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.how_to_vote,
-                  size: 40,
-                  color: Color(0xFF4285F4),
+              // App Logo
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  isDark
+                      ? 'lib/assets/logo/rate_my_mantri_dark.png'
+                      : 'lib/assets/logo/rate_my_mantri_light.png',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.contain,
                 ),
               ),
 
               const SizedBox(height: 40),
 
-              const Text(
+              Text(
                 'Welcome to\nRate My Mantri',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF222222),
+                  color: isDark ? Colors.white : const Color(0xFF222222),
                   height: 1.2,
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              const Text(
+              Text(
                 'Sign in to rate and review your elected representatives.',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF717171),
+                  color: isDark ? Colors.white70 : const Color(0xFF717171),
                   fontWeight: FontWeight.w400,
                   height: 1.5,
                 ),
@@ -285,13 +285,18 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: isDark ? Colors.red.shade900.withOpacity(0.3) : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
+                    border: Border.all(
+                      color: isDark ? Colors.red.shade700 : Colors.red.shade200,
+                    ),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+                    style: TextStyle(
+                      color: isDark ? Colors.red.shade300 : Colors.red.shade700,
+                      fontSize: 14,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -303,12 +308,14 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSignIn,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF222222),
+                    backgroundColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+                    foregroundColor: isDark ? Colors.white : const Color(0xFF222222),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: Color(0xFFDDDDDD)),
+                      side: BorderSide(
+                        color: isDark ? const Color(0xFF444444) : const Color(0xFFDDDDDD),
+                      ),
                     ),
                   ),
                   child: _isLoading
@@ -330,7 +337,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Center(
@@ -371,13 +378,16 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
               const SizedBox(height: 16),
 
               // Terms text
-              const Center(
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     'By continuing, you agree to our Terms of Service and Privacy Policy',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Color(0xFF717171)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : const Color(0xFF717171),
+                    ),
                   ),
                 ),
               ),
