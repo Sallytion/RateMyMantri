@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/representative.dart';
 import '../services/representative_service.dart';
 import 'representative_detail_page.dart';
+import '../widgets/india_pc_map_widget.dart';
 
 class SearchPage extends StatefulWidget {
   final bool isDarkMode;
@@ -271,45 +272,7 @@ class _SearchPageState extends State<SearchPage> {
           // Results Section
           Expanded(
             child: _searchController.text.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: widget.isDarkMode
-                                ? const Color(0xFF2A2A2A)
-                                : const Color(0xFFF0F0F0),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.search_rounded,
-                            size: 64,
-                            color: subtextColor.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Start Exploring',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Search for your representatives',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: subtextColor,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
+                ? IndiaPCMapWidget(isDarkMode: widget.isDarkMode)
                 : _searchResults.isEmpty && !_isSearching
                     ? Center(
                         child: Column(
