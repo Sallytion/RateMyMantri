@@ -1,8 +1,12 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../services/saved_articles_service.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 import 'article_viewer_page.dart';
 
 class SavedArticlesPage extends StatefulWidget {
@@ -20,13 +24,13 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
   bool _isLoading = true;
 
   Color get _backgroundColor =>
-      widget.isDarkMode ? const Color(0xFF1A1A1A) : Colors.white;
+      widget.isDarkMode ? ThemeService.bgMain : Colors.white;
   Color get _primaryText =>
       widget.isDarkMode ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
   Color get _secondaryText =>
       widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
   Color get _cardBackground =>
-      widget.isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF7F7F7);
+      widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFF7F7F7);
 
   @override
   void initState() {
@@ -49,8 +53,8 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Article removed from saved'),
-          backgroundColor: widget.isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFF323232),
+          content: Text(LanguageService.tr('article_removed')),
+          backgroundColor: widget.isDarkMode ? ThemeService.bgElev : const Color(0xFF323232),
         ),
       );
     }
@@ -85,16 +89,18 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
       appBar: AppBar(
         backgroundColor: _backgroundColor,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _primaryText),
+          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: _primaryText),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Saved Articles',
+          LanguageService.tr('saved'),
           style: TextStyle(
             color: _primaryText,
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
         actions: [
@@ -105,19 +111,19 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                   context: context,
                   builder: (context) => AlertDialog(
                     backgroundColor: _cardBackground,
-                    title: Text('Clear All?', style: TextStyle(color: _primaryText)),
+                    title: Text(LanguageService.tr('clear_all_q'), style: TextStyle(color: _primaryText)),
                     content: Text(
-                      'Remove all saved articles?',
+                      LanguageService.tr('remove_all_saved'),
                       style: TextStyle(color: _secondaryText),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
+                        child: Text(LanguageService.tr('cancel')),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Clear All', style: TextStyle(color: Colors.red)),
+                        child: Text(LanguageService.tr('clear_all'), style: TextStyle(color: Colors.red)),
                       ),
                     ],
                   ),
@@ -128,7 +134,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                 }
               },
               child: Text(
-                'Clear All',
+                LanguageService.tr('clear_all'),
                 style: TextStyle(color: _secondaryText),
               ),
             ),
@@ -152,7 +158,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No saved articles',
+                        LanguageService.tr('no_saved_articles'),
                         style: TextStyle(
                           fontSize: 18,
                           color: _secondaryText,
@@ -161,7 +167,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Articles you bookmark will appear here',
+                        LanguageService.tr('bookmark_appear_here'),
                         style: TextStyle(
                           fontSize: 14,
                           color: _secondaryText.withValues(alpha: 0.7),
@@ -193,7 +199,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'All articles are saved locally. If you logout or delete the app, articles will be gone.',
+                              LanguageService.tr('saved_locally_warning'),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: widget.isDarkMode
@@ -248,12 +254,23 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                               if (article.imageUrl != null)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    article.imageUrl!,
+                                  child: CachedNetworkImage(
+                                    imageUrl: article.imageUrl!,
                                     width: 80,
                                     height: 80,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
+                                    memCacheWidth: 200,
+                                    memCacheHeight: 200,
+                                    placeholder: (context, url) => Shimmer.fromColors(
+                                      baseColor: Colors.grey[300]!,
+                                      highlightColor: Colors.grey[100]!,
+                                      child: Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
                                         Container(
                                       width: 80,
                                       height: 80,
@@ -268,7 +285,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      article.title,
+                                      LanguageService.translitName(article.title),
                                       style: TextStyle(
                                         color: _primaryText,
                                         fontSize: 16,
@@ -294,7 +311,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
                                         const SizedBox(width: 4),
                                         Expanded(
                                           child: Text(
-                                            article.source,
+                                            LanguageService.translitName(article.source),
                                             style: TextStyle(
                                               color: _secondaryText,
                                               fontSize: 12,

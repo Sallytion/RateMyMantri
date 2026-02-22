@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,9 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:ip_detector/ip_detector.dart';
+import '../services/theme_service.dart';
+import '../services/language_service.dart';
 import '../services/google_news_decoder.dart';
 import '../services/article_extractor.dart';
 import '../services/saved_articles_service.dart';
+import '../widgets/skeleton_widgets.dart';
 import 'article_viewer_page.dart';
 
 class Article {
@@ -31,15 +35,15 @@ class Article {
 
 class NewsPage extends StatefulWidget {
   final bool isDarkMode;
+  final String languageCode;
 
-  const NewsPage({super.key, required this.isDarkMode});
+  const NewsPage({super.key, required this.isDarkMode, required this.languageCode});
 
   @override
   State<NewsPage> createState() => _NewsPageState();
 }
 
-class _NewsPageState extends State<NewsPage>
-    with AutomaticKeepAliveClientMixin {
+class _NewsPageState extends State<NewsPage> {
   List<Article> _articles = [];
   bool _loading = false;
   String _error = '';
@@ -70,15 +74,31 @@ class _NewsPageState extends State<NewsPage>
   static final Map<String, Map<int, String>> _cachedImagesByTag = {};
   static String? _cachedSelectedTag;
 
-  /// Call this to force-clear all cached news data.
-  static void clearCache() {
-    _cachedArticlesByTag.clear();
-    _cachedImagesByTag.clear();
-    _cachedSelectedTag = null;
-  }
-
   @override
-  bool get wantKeepAlive => true;
+  void didUpdateWidget(covariant NewsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.languageCode != widget.languageCode) {
+      // Language changed — clear cached articles and re-fetch with new language
+      _cachedArticlesByTag.clear();
+      _cachedImagesByTag.clear();
+      _cachedSelectedTag = null;
+      if (_selectedTag == 'Local') {
+        // For Local, fetch using cached city or fall back to generic feed
+        _getCityFromIp().then((loc) {
+          if (!mounted) return;
+          if (loc != null) {
+            final url = _buildGNewsUrlForCity(loc['city']!, loc['country']!);
+            _fetchFeed(url: url, tag: 'Local');
+          } else {
+            _fetchFeed(tag: 'Local');
+          }
+        });
+      } else {
+        final url = _buildUrlForTag(_selectedTag);
+        _fetchFeed(url: url, tag: _selectedTag);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -120,9 +140,10 @@ class _NewsPageState extends State<NewsPage>
   }
 
   Future<void> _fetchFeed({
-    String url = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en',
+    String? url,
     String? tag,
   }) async {
+    url ??= 'https://news.google.com/rss?${LanguageService.newsGlParams}';
     final effectiveTag = tag ?? _selectedTag;
 
     // Check per-tag cache first
@@ -175,23 +196,41 @@ class _NewsPageState extends State<NewsPage>
         _articles = parsed;
         _imageCache.clear();
         _processingIndices.clear();
+        _loading = false;
       });
 
       _processArticlesLazy(0);
     } catch (e) {
       setState(() {
         _error = e.toString();
-      });
-    } finally {
-      setState(() {
         _loading = false;
       });
     }
   }
 
   void _processArticlesLazy(int currentIndex) {
+    // Process current page + next page immediately for instant display
+    final immediateFutures = <Future<void>>[];
     for (int i = currentIndex; i < currentIndex + 2 && i < _articles.length; i++) {
-      _processArticle(i);
+      immediateFutures.add(_processArticle(i));
+    }
+    Future.wait(immediateFutures).then((_) {
+      if (mounted) setState(() {});
+      // After immediate pages are ready, prefetch next 3 in the background
+      _prefetchAhead(currentIndex + 2, 3);
+    });
+  }
+
+  /// Prefetch [count] articles starting from [startIndex] in the background
+  void _prefetchAhead(int startIndex, int count) {
+    final futures = <Future<void>>[];
+    for (int i = startIndex; i < startIndex + count && i < _articles.length; i++) {
+      futures.add(_processArticle(i));
+    }
+    if (futures.isNotEmpty) {
+      Future.wait(futures).then((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -232,9 +271,7 @@ class _NewsPageState extends State<NewsPage>
     }
 
     if (mounted) {
-      setState(() {
-        _imageCache[index] = imageUrl;
-      });
+      _imageCache[index] = imageUrl;
       // Sync image back to per-tag cache
       _cachedImagesByTag[_selectedTag]?[index] = imageUrl;
     }
@@ -247,7 +284,7 @@ class _NewsPageState extends State<NewsPage>
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open link')),
+          SnackBar(content: Text(LanguageService.tr('could_not_open_link'))),
         );
       }
     }
@@ -288,10 +325,29 @@ class _NewsPageState extends State<NewsPage>
 
   String _buildGNewsUrlForCity(String city, String countryCode) {
     final q = Uri.encodeComponent(city);
-    final hl = countryCode == 'IN' ? 'en-IN' : 'en-US';
-    final gl = countryCode;
-    final ceid = '$countryCode:en';
-    return 'https://news.google.com/rss/search?q=$q&hl=$hl&gl=$gl&ceid=$ceid';
+    final params = countryCode == 'IN'
+        ? LanguageService.newsGlParams
+        : 'hl=en-US&gl=$countryCode&ceid=$countryCode:en';
+    return 'https://news.google.com/rss/search?q=$q&$params';
+  }
+
+  /// Returns the RSS URL for a given tag using the current language params.
+  /// Returns null for 'Local' (requires async IP lookup — handled separately).
+  String? _buildUrlForTag(String tag) {
+    final p = LanguageService.newsGlParams;
+    final map = {
+      'All': 'https://news.google.com/rss?$p',
+      'Politics': 'https://news.google.com/rss/headlines/section/topic/POLITICS?$p',
+      'Business': 'https://news.google.com/rss/headlines/section/topic/BUSINESS?$p',
+      'Technology': 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?$p',
+      'Sports': 'https://news.google.com/rss/headlines/section/topic/SPORTS?$p',
+      'Entertainment': 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT?$p',
+      'Health': 'https://news.google.com/rss/headlines/section/topic/HEALTH?$p',
+      'Science': 'https://news.google.com/rss/headlines/section/topic/SCIENCE?$p',
+      'World': 'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en',
+      'India': 'https://news.google.com/rss/headlines/section/topic/NATION?$p',
+    };
+    return map[tag];
   }
 
   String _formatDate(String pubDate) {
@@ -319,46 +375,62 @@ class _NewsPageState extends State<NewsPage>
   }
 
   Widget _buildImage(String imageUrl, int fallbackIndex) {
-    return Image.network(
-      imageUrl,
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) => progress == null
-          ? child
-          : Container(
-              color: widget.isDarkMode ? const Color(0xFF121212) : Colors.grey[300],
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-      errorBuilder: (_, __, ___) => Image.network(
-        'https://picsum.photos/600/1000?random=$fallbackIndex',
+      memCacheWidth: 800,
+      fadeInDuration: Duration.zero,
+      fadeOutDuration: Duration.zero,
+      placeholder: (context, url) => Container(color: Colors.grey[900]),
+      errorWidget: (_, _, _) => CachedNetworkImage(
+        imageUrl: 'https://picsum.photos/600/1000?random=$fallbackIndex',
         fit: BoxFit.cover,
+        memCacheWidth: 800,
+        fadeInDuration: Duration.zero,
+        fadeOutDuration: Duration.zero,
+        placeholder: (context, url) => Container(color: Colors.grey[900]),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
+      backgroundColor: widget.isDarkMode ? ThemeService.bgAlt : Colors.white,
       body: Column(
         children: [
           SafeArea(
             bottom: false,
-            child: SizedBox(
-              height: 60,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _tags.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Text(
+                    LanguageService.tr('news'),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _tags.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, idx) {
                     final t = _tags[idx];
                     final selected = t == _selectedTag;
                     return ChoiceChip(
-                      label: Text(t),
+                      label: Text(LanguageService.tr(t.toLowerCase())),
                       selected: selected,
                       onSelected: (sel) async {
+                        final messenger = ScaffoldMessenger.of(context);
                         setState(() {
                           _selectedTag = t;
                         });
@@ -373,9 +445,9 @@ class _NewsPageState extends State<NewsPage>
                           final loc = await _getCityFromIp();
                           if (loc != null) {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text('Showing news for ${loc['city']}, ${loc['country']}'),
+                                  content: Text('${LanguageService.tr('showing_news_for')} ${loc['city']}, ${loc['country']}'),
                                   duration: const Duration(seconds: 2),
                                 ),
                               );
@@ -384,8 +456,8 @@ class _NewsPageState extends State<NewsPage>
                             await _fetchFeed(url: url, tag: 'Local');
                           } else {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Could not detect location — showing default news')),
+                              messenger.showSnackBar(
+                                SnackBar(content: Text(LanguageService.tr('could_not_detect_location'))),
                               );
                             }
                             await _fetchFeed(tag: 'Local');
@@ -393,35 +465,25 @@ class _NewsPageState extends State<NewsPage>
                           return;
                         }
 
-                        final map = {
-                          'All': 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Politics': 'https://news.google.com/rss/headlines/section/topic/POLITICS?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Business': 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Technology': 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Sports': 'https://news.google.com/rss/headlines/section/topic/SPORTS?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Entertainment': 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Health': 'https://news.google.com/rss/headlines/section/topic/HEALTH?hl=en-IN&gl=IN&ceid=IN:en',
-                          'Science': 'https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=en-IN&gl=IN&ceid=IN:en',
-                          'World': 'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en',
-                          'India': 'https://news.google.com/rss/headlines/section/topic/NATION?hl=en-IN&gl=IN&ceid=IN:en',
-                        };
-                        await _fetchFeed(url: map[t] ?? map['All']!, tag: t);
+                        final url = _buildUrlForTag(t);
+                        await _fetchFeed(url: url, tag: t);
                       },
                     );
                   },
                 ),
               ),
+              ],
             ),
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? NewsPageSkeleton(isDarkMode: widget.isDarkMode)
                 : _error.isNotEmpty
                     ? ListView(
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(16),
-                            child: Text('Error: $_error'),
+                            child: Text('${LanguageService.tr('error_prefix')}: $_error'),
                           ),
                         ],
                       )
@@ -481,9 +543,18 @@ class _NewsPageState extends State<NewsPage>
                                             ? _buildImage(cachedImg, i)
                                             : Container(
                                                 color: widget.isDarkMode
-                                                    ? const Color(0xFF1E1E1E)
+                                                    ? ThemeService.bgCard
                                                     : Colors.grey[200],
-                                                child: const Center(child: CircularProgressIndicator()),
+                                                child: SkeletonShimmer(
+                                                  isDarkMode: widget.isDarkMode,
+                                                  child: Container(
+                                                    margin: const EdgeInsets.all(20),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius: BorderRadius.circular(20),
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                       ),
                                       Positioned.fill(
@@ -525,17 +596,18 @@ class _NewsPageState extends State<NewsPage>
                                                       : Colors.white,
                                                 ),
                                                 onPressed: () async {
+                                                  final messenger = ScaffoldMessenger.of(context);
                                                   if (_savedArticleLinks.contains(a.link)) {
                                                     await _savedArticlesService.removeArticle(a.link);
                                                     setState(() {
                                                       _savedArticleLinks.remove(a.link);
                                                     });
                                                     if (mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                      messenger.showSnackBar(
                                                         SnackBar(
-                                                          content: const Text('Removed from saved articles'),
+                                                          content: Text(LanguageService.tr('removed_from_saved')),
                                                           backgroundColor: widget.isDarkMode
-                                                              ? const Color(0xFF2A2A2A)
+                                                              ? ThemeService.bgElev
                                                               : const Color(0xFF323232),
                                                           duration: const Duration(seconds: 2),
                                                         ),
@@ -557,11 +629,11 @@ class _NewsPageState extends State<NewsPage>
                                                       _savedArticleLinks.add(a.link);
                                                     });
                                                     if (mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                      messenger.showSnackBar(
                                                         SnackBar(
-                                                          content: const Text('Saved to bookmarks'),
+                                                          content: Text(LanguageService.tr('saved_to_bookmarks')),
                                                           backgroundColor: widget.isDarkMode
-                                                              ? const Color(0xFF2A2A2A)
+                                                              ? ThemeService.bgElev
                                                               : const Color(0xFF323232),
                                                           duration: const Duration(seconds: 2),
                                                         ),
@@ -597,7 +669,7 @@ class _NewsPageState extends State<NewsPage>
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              a.title,
+                                              LanguageService.translitName(a.title),
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 28,
@@ -608,7 +680,7 @@ class _NewsPageState extends State<NewsPage>
                                             const SizedBox(height: 12),
                                             if (a.source.isNotEmpty)
                                               Text(
-                                                a.source,
+                                                LanguageService.translitName(a.source),
                                                 style: TextStyle(
                                                   color: Colors.white.withValues(alpha: 0.8),
                                                   fontSize: 14,

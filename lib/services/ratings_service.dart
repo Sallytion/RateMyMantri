@@ -3,9 +3,12 @@ import 'package:http/http.dart' as http;
 import '../models/rating.dart';
 import '../models/rating_statistics.dart';
 import 'auth_storage_service.dart';
+import 'cache_service.dart';
+import 'language_service.dart';
 
 class RatingsService {
   static const String baseUrl = 'https://ratemymantri.sallytion.qzz.io/api';
+  static const Duration _cacheTtl = Duration(minutes: 5);
 
   // Helper method to get headers with auth token
   Future<Map<String, String>> _getHeaders() async {
@@ -14,6 +17,15 @@ class RatingsService {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
+  }
+
+  /// Invalidate cached rating data for a representative after a mutation
+  void _invalidateRatingCaches(int representativeId) {
+    // Invalidate the specific stats cache key
+    CacheService.invalidate('rating_stats_$representativeId');
+    // Also clear any ratings list caches (multiple sort/page combos possible)
+    // Since we can't match by prefix with hashed keys, clear all data cache
+    CacheService.clearDataCache();
   }
 
   /// Create a new rating for a representative
@@ -38,26 +50,18 @@ class RatingsService {
           'reviewText': reviewText,
       };
 
-      print('Creating rating: $body');
-      print(
-        '🔑 Authorization header: ${headers['Authorization']?.substring(0, 20)}...',
-      );
-
       final response = await http.post(
         Uri.parse('$baseUrl/ratings'),
         headers: headers,
         body: json.encode(body),
       );
 
-      print('Create rating response: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['rating'] != null) {
           final ratingData = data['rating'];
-          print('🎯 RATING TYPE FROM BACKEND: ${ratingData['ratingType']}');
-          print('🎯 FULL RATING DATA: $ratingData');
+          // Invalidate cached stats for this representative
+          _invalidateRatingCaches(representativeId);
           return Rating.fromJson(ratingData);
         } else {
           throw Exception('Invalid response format');
@@ -67,7 +71,6 @@ class RatingsService {
         throw Exception(error['message'] ?? 'Failed to create rating');
       }
     } catch (e) {
-      print('Error creating rating: $e');
       rethrow;
     }
   }
@@ -91,21 +94,19 @@ class RatingsService {
       if (question3Stars != null) body['question3Stars'] = question3Stars;
       if (anonymous != null) body['anonymous'] = anonymous;
       if (reviewText != null) body['reviewText'] = reviewText;
-
-      print('Updating rating $ratingId: $body');
       final response = await http.put(
         Uri.parse('$baseUrl/ratings/$ratingId'),
         headers: headers,
         body: json.encode(body),
       );
 
-      print('Update rating response: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['rating'] != null) {
-          return Rating.fromJson(data['rating']);
+          final rating = Rating.fromJson(data['rating']);
+          // Invalidate caches after update
+          CacheService.clearDataCache();
+          return rating;
         } else {
           throw Exception('Invalid response format');
         }
@@ -114,7 +115,6 @@ class RatingsService {
         throw Exception(error['message'] ?? 'Failed to update rating');
       }
     } catch (e) {
-      print('Error updating rating: $e');
       rethrow;
     }
   }
@@ -124,25 +124,24 @@ class RatingsService {
   Future<bool> deleteRating(String ratingId) async {
     try {
       final headers = await _getHeaders();
-
-      print('Deleting rating: $ratingId');
       final response = await http.delete(
         Uri.parse('$baseUrl/ratings/$ratingId'),
         headers: headers,
       );
 
-      print('Delete rating response: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        final success = data['success'] == true;
+        if (success) {
+          // Invalidate caches after deletion
+          CacheService.clearDataCache();
+        }
+        return success;
       } else {
         final error = json.decode(response.body);
         throw Exception(error['message'] ?? 'Failed to delete rating');
       }
     } catch (e) {
-      print('Error deleting rating: $e');
       rethrow;
     }
   }
@@ -156,7 +155,24 @@ class RatingsService {
     String sortBy = 'created_at',
     String sortOrder = 'DESC',
   }) async {
+    final cacheKey = 'ratings_${representativeId}_${limit}_${offset}_${sortBy}_$sortOrder';
     try {
+      // Check cache first
+      final cached = await CacheService.getCachedData(cacheKey, maxAge: _cacheTtl);
+      if (cached != null) {
+        final ratings = (cached['ratings'] as List?)
+            ?.map((json) => Rating.fromJson(json as Map<String, dynamic>))
+            .toList() ?? [];
+        return {
+          'representativeId': cached['representativeId'],
+          'statistics': cached['statistics'] != null
+              ? RatingStatistics.fromJson(cached['statistics'] as Map<String, dynamic>)
+              : null,
+          'ratings': ratings,
+          'pagination': cached['pagination'],
+        };
+      }
+
       final uri = Uri.parse('$baseUrl/ratings/representative/$representativeId')
           .replace(
             queryParameters: {
@@ -166,12 +182,7 @@ class RatingsService {
               'sortOrder': sortOrder,
             },
           );
-
-      print('Getting ratings for representative: $uri');
       final response = await http.get(uri);
-
-      print('Get ratings response: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -181,6 +192,14 @@ class RatingsService {
                   ?.map((json) => Rating.fromJson(json))
                   .toList() ??
               [];
+
+          // Cache the raw JSON for future use
+          CacheService.cacheData(cacheKey, {
+            'representativeId': data['representativeId'],
+            'statistics': data['statistics'],
+            'ratings': data['ratings'],
+            'pagination': data['pagination'],
+          }, ttl: _cacheTtl);
 
           return {
             'representativeId': data['representativeId'],
@@ -197,26 +216,31 @@ class RatingsService {
         throw Exception('Failed to load ratings: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error getting ratings: $e');
       rethrow;
     }
   }
 
   /// Get rating statistics for a representative (public)
   Future<RatingStatistics?> getRatingStatistics(int representativeId) async {
+    final cacheKey = 'rating_stats_${representativeId}_${LanguageService.languageCode}';
     try {
-      final uri = Uri.parse('$baseUrl/ratings/statistics/$representativeId');
+      // Check cache first
+      final cached = await CacheService.getCachedData(cacheKey, maxAge: _cacheTtl);
+      if (cached != null) {
+        return RatingStatistics.fromJson(cached);
+      }
 
-      print('Getting rating statistics: $uri');
+      final uri = Uri.parse('$baseUrl/ratings/statistics/$representativeId').replace(
+        queryParameters: {'lang': LanguageService.languageCode},
+      );
       final response = await http.get(uri);
-
-      print('Get statistics response: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['statistics'] != null) {
-          return RatingStatistics.fromJson(data['statistics']);
+          final statsJson = data['statistics'] as Map<String, dynamic>;
+          CacheService.cacheData(cacheKey, statsJson, ttl: _cacheTtl);
+          return RatingStatistics.fromJson(statsJson);
         } else {
           throw Exception('Invalid response format');
         }
@@ -227,7 +251,6 @@ class RatingsService {
         throw Exception('Failed to load statistics: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error getting statistics: $e');
       return null;
     }
   }
@@ -236,13 +259,10 @@ class RatingsService {
   Future<List<Rating>> getCurrentUserRatings() async {
     try {
       final headers = await _getHeaders();
-      final uri = Uri.parse('$baseUrl/ratings/user/me');
-
-      print('Getting current user ratings: $uri');
+      final uri = Uri.parse('$baseUrl/ratings/user/me').replace(
+        queryParameters: {'lang': LanguageService.languageCode},
+      );
       final response = await http.get(uri, headers: headers);
-
-      print('Get user ratings response: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -257,7 +277,6 @@ class RatingsService {
         throw Exception('Failed to load user ratings: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error getting user ratings: $e');
       rethrow;
     }
   }
@@ -270,12 +289,7 @@ class RatingsService {
       final uri = Uri.parse(
         '$baseUrl/ratings/user/me/representative/$representativeId',
       );
-
-      print('Checking user rating for representative: $uri');
       final response = await http.get(uri, headers: headers);
-
-      print('Check user rating response: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -295,7 +309,6 @@ class RatingsService {
         throw Exception('Failed to check rating: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error checking user rating: $e');
       return null;
     }
   }

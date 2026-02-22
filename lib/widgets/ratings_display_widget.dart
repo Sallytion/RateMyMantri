@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/rating.dart';
 import '../models/rating_statistics.dart';
+import '../services/language_service.dart';
 import '../services/ratings_service.dart';
+import '../services/theme_service.dart';
 
 class RatingsDisplayWidget extends StatefulWidget {
   final int representativeId;
@@ -45,7 +47,6 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
         setState(() => _statistics = stats);
       }
     } catch (e) {
-      print('Error loading statistics: $e');
     }
   }
 
@@ -75,7 +76,6 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
         });
       }
     } catch (e) {
-      print('Error loading ratings: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -101,7 +101,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
     }
 
     return Card(
-      color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+      color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -115,7 +115,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Overall Rating',
+                        LanguageService.tr('overall_rating'),
                         style: TextStyle(
                           fontSize: 14,
                           color: widget.isDarkMode
@@ -143,7 +143,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: widget.isDarkMode
-                        ? const Color(0xFF1A1A1A)
+                        ? ThemeService.bgMain
                         : const Color(0xFFF5F5F5),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -160,7 +160,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                         ),
                       ),
                       Text(
-                        'Ratings',
+                        LanguageService.tr('ratings'),
                         style: TextStyle(
                           fontSize: 12,
                           color: widget.isDarkMode
@@ -183,19 +183,19 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
               children: [
                 Expanded(
                   child: _buildStatItem(
-                    'Q1 Avg',
+                    LanguageService.tr('q1_avg'),
                     _statistics!.avgQ1Stars.toStringAsFixed(1),
                   ),
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    'Q2 Avg',
+                    LanguageService.tr('q2_avg'),
                     _statistics!.avgQ2Stars.toStringAsFixed(1),
                   ),
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    'Q3 Avg',
+                    LanguageService.tr('q3_avg'),
                     _statistics!.avgQ3Stars.toStringAsFixed(1),
                   ),
                 ),
@@ -209,19 +209,19 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
               children: [
                 Expanded(
                   child: _buildStatItem(
-                    'Verified',
+                    LanguageService.tr('verified'),
                     '${_statistics!.verifiedNamedCount + _statistics!.verifiedAnonymousCount}',
                   ),
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    'Anonymous',
+                    LanguageService.tr('anonymous'),
                     '${_statistics!.verifiedAnonymousCount}',
                   ),
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    'Unverified',
+                    LanguageService.tr('unverified'),
                     '${_statistics!.unverifiedCount}',
                   ),
                 ),
@@ -258,7 +258,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
 
   Widget _buildRatingCard(Rating rating) {
     return Card(
-      color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+      color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -277,7 +277,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: widget.isDarkMode
-                        ? const Color(0xFF3A3A3A)
+                        ? ThemeService.bgBorder
                         : const Color(0xFFE0E0E0),
                     child: Icon(
                       rating.isAnonymous ? Icons.person_outline : Icons.person,
@@ -294,8 +294,8 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                     children: [
                       Text(
                         rating.isAnonymous
-                            ? 'Anonymous'
-                            : (rating.userName ?? 'User'),
+                            ? LanguageService.tr('anonymous')
+                            : LanguageService.translitName(rating.userName ?? LanguageService.tr('user')),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -332,7 +332,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  rating.isVerified ? 'Verified' : 'Unverified',
+                                  rating.isVerified ? LanguageService.tr('verified') : LanguageService.tr('unverified'),
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: widget.isDarkMode
@@ -387,7 +387,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Q1',
+                        LanguageService.tr('q1'),
                         style: TextStyle(
                           fontSize: 10,
                           color: widget.isDarkMode
@@ -404,7 +404,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Q2',
+                        LanguageService.tr('q2'),
                         style: TextStyle(
                           fontSize: 10,
                           color: widget.isDarkMode
@@ -421,7 +421,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Q3',
+                        LanguageService.tr('q3'),
                         style: TextStyle(
                           fontSize: 10,
                           color: widget.isDarkMode
@@ -443,12 +443,12 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: widget.isDarkMode
-                      ? const Color(0xFF1A1A1A)
+                      ? ThemeService.bgMain
                       : const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  rating.reviewText!,
+                  LanguageService.translitName(rating.reviewText!),
                   style: TextStyle(
                     fontSize: 13,
                     color: widget.isDarkMode
@@ -508,7 +508,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
               ),
               const SizedBox(height: 16),
               Text(
-                'No ratings yet',
+                LanguageService.tr('no_ratings'),
                 style: TextStyle(
                   fontSize: 16,
                   color: widget.isDarkMode
@@ -518,7 +518,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Be the first to rate this representative',
+                LanguageService.tr('be_first_rate'),
                 style: TextStyle(
                   fontSize: 12,
                   color: widget.isDarkMode
@@ -542,7 +542,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Text(
-            'All Ratings (${_statistics!.totalRatings})',
+            '${LanguageService.tr('all_ratings')} (${_statistics!.totalRatings})',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -571,7 +571,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                         : const Color(0xFFBBBBBB),
                   ),
                 ),
-                child: const Text('Load More'),
+                child: Text(LanguageService.tr('load_more')),
               ),
             ),
           ),

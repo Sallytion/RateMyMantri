@@ -5,10 +5,15 @@ import 'firebase_options.dart';
 import 'pages/google_sign_in_page.dart';
 import 'pages/main_screen.dart';
 import 'services/auth_storage_service.dart';
+import 'services/language_service.dart';
 import 'services/notification_service.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize language service (loads preference + inditrans engine)
+  await LanguageService.init();
   
   // Initialize Firebase in the background (don't block app startup)
   _initializeFirebase();
@@ -28,20 +33,14 @@ void main() async {
 
 Future<void> _initializeFirebase() async {
   try {
-    debugPrint('🔥 Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('✅ Firebase initialized successfully');
     
     // Initialize notifications and subscribe to 'general' topic
-    debugPrint('📲 Starting notification service initialization...');
     await NotificationService.initialize();
-    debugPrint('✅ Notifications initialized successfully');
-  } catch (e, stackTrace) {
-    debugPrint('⚠️ Firebase initialization error: $e');
-    debugPrint('⚠️ Stack trace: $stackTrace');
-    debugPrint('⚠️ App will continue without push notifications');
+  } catch (_) {
+    // App will continue without push notifications
   }
 }
 
@@ -55,7 +54,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: ThemeService.accent,
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: Colors.white,
@@ -65,13 +64,13 @@ class MyApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: ThemeService.accent,
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-        canvasColor: const Color(0xFF1A1A1A),
-        cardColor: const Color(0xFF2A2A2A),
-        dialogBackgroundColor: const Color(0xFF2A2A2A),
+        scaffoldBackgroundColor: ThemeService.bgMain,
+        canvasColor: ThemeService.bgMain,
+        cardColor: ThemeService.bgElev,
+        dialogTheme: DialogThemeData(backgroundColor: ThemeService.bgElev),
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
@@ -91,28 +90,23 @@ class _AuthCheckerState extends State<AuthChecker> {
   @override
   void initState() {
     super.initState();
-    debugPrint('🔍 AuthChecker: Starting auth check...');
     _checkAuth();
   }
 
   Future<void> _checkAuth() async {
     try {
-      debugPrint('🔍 AuthChecker: Checking if authenticated...');
       // Check if user has valid tokens
       final isAuthenticated = await AuthStorageService.isAuthenticated();
-      debugPrint('🔍 AuthChecker: isAuthenticated = $isAuthenticated');
 
       if (isAuthenticated) {
-        debugPrint('🔍 AuthChecker: Fetching user profile...');
         // Try to fetch user profile to verify token is still valid
         final userData = await AuthStorageService.fetchUserProfile();
-        debugPrint('🔍 AuthChecker: userData = $userData');
 
         if (userData != null && mounted) {
           // User is authenticated, get verification status
           final isVerified =
               await AuthStorageService.getAadhaarVerificationStatus();
-          debugPrint('🔍 AuthChecker: Navigating to MainScreen...');
+          if (!mounted) return;
 
           // Navigate to main screen with user data
           Navigator.of(context).pushReplacement(
@@ -127,23 +121,20 @@ class _AuthCheckerState extends State<AuthChecker> {
             ),
           );
         } else if (mounted) {
-          debugPrint('🔍 AuthChecker: Token invalid, navigating to login...');
           // Token invalid or expired, clear auth and show login
           await AuthStorageService.clearAuthData();
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const GoogleSignInPage()),
           );
         }
       } else if (mounted) {
-        debugPrint('🔍 AuthChecker: Not authenticated, navigating to login...');
         // No tokens found, show login screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const GoogleSignInPage()),
         );
       }
-    } catch (e, stackTrace) {
-      debugPrint('❌ AuthChecker error: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (_) {
       // On error, go to login screen
       if (mounted) {
         Navigator.of(context).pushReplacement(

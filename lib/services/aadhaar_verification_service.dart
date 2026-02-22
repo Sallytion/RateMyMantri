@@ -67,7 +67,6 @@ class AadhaarVerificationService {
             accessToken: tokens['accessToken'] as String,
             refreshToken: tokens['refreshToken'] as String,
           );
-          print('✅ New tokens with is_verified claim saved successfully');
         }
 
         return {
@@ -111,8 +110,6 @@ class AadhaarVerificationService {
       // 1. Hash the raw QR data
       final aadhaarHash = hashAadhaarData(rawQrData);
 
-      print('Generated Aadhaar Hash: $aadhaarHash');
-
       // 2. Verify with backend
       final verificationResult = await verifyAadhaarHash(aadhaarHash);
 
@@ -141,7 +138,6 @@ class AadhaarVerificationService {
 
       return false;
     } catch (e) {
-      print('Error checking Aadhaar status: $e');
       return false;
     }
   }

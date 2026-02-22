@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'aadhar_verification_page.dart';
 import 'main_screen.dart';
 import '../services/auth_storage_service.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 
 class GoogleSignInPage extends StatefulWidget {
   const GoogleSignInPage({super.key});
@@ -48,7 +50,6 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       }
     } catch (e) {
       // Silent sign-in failed, user needs to sign in manually
-      debugPrint('Silent sign-in failed: $e');
     }
   }
 
@@ -59,37 +60,20 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     });
 
     try {
-      debugPrint('Starting Google Sign-In...');
       final account = await _googleSignIn.signIn();
 
       if (account == null) {
-        debugPrint('Sign-in cancelled by user');
         setState(() {
           _isLoading = false;
         });
         return;
       }
 
-      debugPrint('Google Sign-In successful: ${account.email}');
-      debugPrint('User ID: ${account.id}');
-      debugPrint('Display Name: ${account.displayName}');
-
       // Get the authentication token
-      debugPrint('Getting authentication token...');
       final authentication = await account.authentication;
       final idToken = authentication.idToken;
-      final accessToken = authentication.accessToken;
-
-      debugPrint(
-        'ID Token: ${idToken != null ? "Available (${idToken.substring(0, 50)}...)" : "NULL"}',
-      );
-      debugPrint('Access Token: ${accessToken != null ? "Available" : "NULL"}');
-      debugPrint('Full ID Token for debugging: $idToken');
 
       if (idToken == null) {
-        debugPrint(
-          'ERROR: ID token is null. Check OAuth client configuration in Google Cloud Console.',
-        );
         throw Exception(
           'Failed to get ID token. Please check Google Cloud Console OAuth setup.',
         );
@@ -98,14 +82,12 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       // Authenticate with backend
       await _authenticateWithBackend(idToken, account);
     } catch (error) {
-      debugPrint('Sign-in error details: $error');
       if (mounted) {
         setState(() {
-          _errorMessage = 'Sign-in failed. Please try again.';
+          _errorMessage = LanguageService.tr('sign_in_failed');
           _isLoading = false;
         });
       }
-      debugPrint('Sign-in error: $error');
     }
   }
 
@@ -120,43 +102,21 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
         body: json.encode({'idToken': idToken}),
       );
 
-      debugPrint('Backend auth response status: ${response.statusCode}');
-      debugPrint('Backend auth response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        debugPrint('Authentication successful: $responseData');
 
         // Save tokens and user data locally
         await AuthStorageService.saveAuthResponse(responseData);
-        debugPrint('Tokens and user data saved locally');
 
         // ðŸ” DEBUG: Decode and check JWT token
         if (responseData['tokens'] != null &&
             responseData['tokens']['accessToken'] != null) {
-          final accessToken = responseData['tokens']['accessToken'] as String;
-          try {
-            final parts = accessToken.split('.');
-            if (parts.length == 3) {
-              final payload = json.decode(
-                utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-              );
-              debugPrint('ðŸ” JWT TOKEN PAYLOAD: $payload');
-              debugPrint(
-                'ðŸ” is_verified claim in token: ${payload['is_verified']}',
-              );
-            }
-          } catch (e) {
-            debugPrint('Could not decode JWT: $e');
-          }
+          // Token decoding removed (was only used for debug logging)
         }
 
         // Fetch user profile to check Aadhaar verification status
-        debugPrint('Checking Aadhaar verification status...');
         final userProfile = await AuthStorageService.fetchUserProfile();
         final isAadhaarVerified = userProfile?['is_verified'] == true;
-
-        debugPrint('Aadhaar verified status: $isAadhaarVerified');
 
         if (mounted) {
           if (isAadhaarVerified) {
@@ -168,24 +128,14 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
           }
         }
       } else {
-        debugPrint('Backend authentication failed!');
-        debugPrint('Status: ${response.statusCode}');
-        debugPrint('Error: ${response.body}');
-        debugPrint('Possible issues:');
-        debugPrint('1. Backend might expect a different OAuth Client ID');
-        debugPrint(
-          '2. Token audience (aud) claim might not match backend expectations',
-        );
-        debugPrint('3. Backend server time might be out of sync');
         throw Exception(
           'Backend authentication failed: ${response.statusCode}',
         );
       }
     } catch (error) {
-      debugPrint('Backend auth error: $error');
       if (mounted) {
         setState(() {
-          _errorMessage = 'Authentication failed. Please try again.';
+          _errorMessage = LanguageService.tr('auth_failed');
           _isLoading = false;
         });
       }
@@ -199,7 +149,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       MaterialPageRoute(
         builder: (context) => AadharVerificationPage(
           userEmail: account.email,
-          userName: account.displayName ?? 'User',
+          userName: account.displayName ?? LanguageService.tr('user'),
           userId: account.id,
           photoUrl: account.photoUrl,
         ),
@@ -215,7 +165,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       context,
       MaterialPageRoute(
         builder: (context) => MainScreen(
-          userName: account.displayName ?? 'User',
+          userName: account.displayName ?? LanguageService.tr('user'),
           isVerified: isVerified,
           userEmail: account.email,
           userId: account.id,
@@ -255,7 +205,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
               const SizedBox(height: 40),
 
               Text(
-                'Welcome to\nRate My Mantri',
+                LanguageService.tr('welcome_title'),
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w700,
@@ -267,7 +217,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
               const SizedBox(height: 16),
 
               Text(
-                'Sign in to rate and review your elected representatives.',
+                LanguageService.tr('sign_in_desc'),
                 style: TextStyle(
                   fontSize: 16,
                   color: isDark ? Colors.white70 : const Color(0xFF717171),
@@ -285,7 +235,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.red.shade900.withOpacity(0.3) : Colors.red.shade50,
+                    color: isDark ? Colors.red.shade900.withValues(alpha: 0.3) : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isDark ? Colors.red.shade700 : Colors.red.shade200,
@@ -308,7 +258,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSignIn,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+                    backgroundColor: isDark ? ThemeService.bgElev : Colors.white,
                     foregroundColor: isDark ? Colors.white : const Color(0xFF222222),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -337,7 +287,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+                                color: isDark ? ThemeService.bgElev : Colors.white,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Center(
@@ -363,9 +313,9 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              'Continue with Google',
-                              style: TextStyle(
+                            Text(
+                              LanguageService.tr('continue_google'),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -382,7 +332,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'By continuing, you agree to our Terms of Service and Privacy Policy',
+                    LanguageService.tr('terms_agree'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,

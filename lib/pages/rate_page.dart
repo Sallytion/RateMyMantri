@@ -1,7 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import '../models/rating.dart';
 import '../services/ratings_service.dart';
 import '../services/auth_storage_service.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/rating_form_widget.dart';
 
 class RatePage extends StatefulWidget {
@@ -25,7 +29,6 @@ class _RatePageState extends State<RatePage> {
   static List<Rating>? _cachedRatings;
   static bool? _cachedIsAuthenticated;
 
-  /// Call this to force-clear cached data (e.g. after submitting a new rating from another page).
   static void clearCache() {
     _cachedRatings = null;
     _cachedIsAuthenticated = null;
@@ -42,7 +45,6 @@ class _RatePageState extends State<RatePage> {
   }
 
   Future<void> _checkAuthAndLoadRatings() async {
-    // Use cache if available
     if (_cachedIsAuthenticated != null && _cachedRatings != null) {
       setState(() {
         _isAuthenticated = _cachedIsAuthenticated!;
@@ -70,109 +72,83 @@ class _RatePageState extends State<RatePage> {
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('Error loading ratings: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _refreshRatings() async {
+    clearCache();
+    await _checkAuthAndLoadRatings();
   }
 
   Future<void> _deleteRating(Rating rating) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: 340),
           decoration: BoxDecoration(
-            color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 32,
-                offset: const Offset(0, 16),
-              ),
-            ],
+            color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with Icon
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF385C).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.delete_rounded,
-                        color: Color(0xFFFF385C),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Delete Rating',
-                            style: TextStyle(
-                              color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "This can't be undone",
-                            style: TextStyle(
-                              color: widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.red,
+                    size: 28,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(
-                  'Are you sure you want to delete your rating for ${rating.representativeName}?',
+                  LanguageService.tr('delete_rating'),
+                  style: TextStyle(
+                    color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${LanguageService.tr('delete_rating_confirm')}\n${rating.representativeName ?? LanguageService.tr('this_representative')}',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
-                    fontSize: 15,
+                    fontSize: 14,
                     height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Action Buttons
                 Row(
                   children: [
                     Expanded(
                       child: TextButton(
                         onPressed: () => Navigator.pop(context, false),
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
                           backgroundColor: widget.isDarkMode
-                              ? const Color(0xFF3A3A3A)
-                              : const Color(0xFFF0F0F0),
+                              ? ThemeService.bgBorder
+                              : const Color(0xFFF5F5F5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: Text(
-                          'Cancel',
+                          LanguageService.tr('cancel'),
                           style: TextStyle(
-                            color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -181,24 +157,21 @@ class _RatePageState extends State<RatePage> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
+                      child: TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: const Color(0xFFFF385C),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          backgroundColor: Colors.red,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Delete',
-                          style: TextStyle(
+                        child: Text(
+                          LanguageService.tr('delete'),
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -217,16 +190,15 @@ class _RatePageState extends State<RatePage> {
         await _ratingsService.deleteRating(rating.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rating deleted successfully')),
+            SnackBar(content: Text(LanguageService.tr('rating_deleted'))),
           );
-          // Invalidate cache and refetch
           clearCache();
           _checkAuthAndLoadRatings();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete rating: $e')),
+            SnackBar(content: Text('${LanguageService.tr('failed_delete_rating')}: $e')),
           );
         }
       }
@@ -250,7 +222,6 @@ class _RatePageState extends State<RatePage> {
           isVerified: widget.isVerified,
           existingRating: rating,
           onRatingSubmitted: () {
-            // Invalidate cache and refetch after editing
             clearCache();
             _checkAuthAndLoadRatings();
           },
@@ -259,77 +230,75 @@ class _RatePageState extends State<RatePage> {
     );
   }
 
-  Widget _buildStarRating(int stars, {double size = 16}) {
+  // ─── Star bar helper ────────────────────────────────────────────
+  Widget _buildStarRow(int stars, {double size = 14}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        return Icon(
-          index < stars ? Icons.star : Icons.star_border,
-          color: Colors.amber,
-          size: size,
-        );
-      }),
+      children: List.generate(5, (i) => Icon(
+        i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
+        size: size,
+        color: i < stars
+            ? ThemeService.accent
+            : (widget.isDarkMode ? const Color(0xFF444444) : const Color(0xFFD5D5D5)),
+      )),
     );
   }
 
-  Widget _buildRatingCard(Rating rating) {
-    final cardColor = widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = widget.isDarkMode ? Colors.white : const Color(0xFF222222);
-    final subtextColor = widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
-    
+  // ─── Rating card ────────────────────────────────────────────────
+  Widget _buildRatingCard(Rating rating, {required Color textColor, required Color subtextColor}) {
+    final borderColor = widget.isDarkMode
+        ? ThemeService.bgBorder
+        : const Color(0xFFEEEEEE);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: widget.isDarkMode ? ThemeService.bgCard : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            // Navigate to representative detail page if needed
-          },
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _editRating(rating),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Representative Header
+                // ── Top row: avatar + name + overall stars ──
                 Row(
                   children: [
+                    // Circular avatar
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: widget.isDarkMode
-                              ? const Color(0xFF3A3A3A)
-                              : const Color(0xFFE0E0E0),
-                          width: 2,
-                        ),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: borderColor, width: 1.5),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                      child: ClipOval(
                         child: rating.representativeImage != null
-                            ? Image.network(
-                                rating.representativeImage!,
+                            ? CachedNetworkImage(
+                                imageUrl: rating.representativeImage!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
+                                memCacheWidth: 88,
+                                memCacheHeight: 88,
+                                placeholder: (context, url) => Shimmer.fromColors(
+                                  baseColor: Colors.grey[300]!,
+                                  highlightColor: Colors.grey[100]!,
+                                  child: Container(color: Colors.white),
+                                ),
+                                errorWidget: (context, url, error) =>
                                     _buildPlaceholderAvatar(rating.representativeName ?? 'U'),
                               )
                             : _buildPlaceholderAvatar(rating.representativeName ?? 'U'),
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
+                    // Name + meta
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,242 +306,152 @@ class _RatePageState extends State<RatePage> {
                           Text(
                             rating.representativeName ?? 'Unknown',
                             style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                               color: textColor,
-                              letterSpacing: -0.3,
+                              letterSpacing: -0.2,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 4),
-                          if (rating.party != null && rating.party!.isNotEmpty)
-                            Text(
-                              rating.party!,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: subtextColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          if (rating.constituency != null && rating.constituency!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.location_on_rounded,
-                                  size: 12,
-                                  color: subtextColor,
-                                ),
-                                const SizedBox(width: 3),
-                                Expanded(
-                                  child: Text(
-                                    rating.constituency!,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: subtextColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    // Overall Rating Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFB800),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFFB800).withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
+                          const SizedBox(height: 2),
                           Text(
-                            rating.overallStars.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                            [
+                              if (rating.party != null && rating.party!.isNotEmpty) rating.party!,
+                              if (rating.constituency != null && rating.constituency!.isNotEmpty) rating.constituency!,
+                            ].join(' · '),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: subtextColor,
+                              fontWeight: FontWeight.w400,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Status and Date Row
-                Row(
-                  children: [
+                    const SizedBox(width: 8),
+                    // Overall star display
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: rating.isVerified
-                            ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
-                            : subtextColor.withValues(alpha: 0.15),
+                        color: ThemeService.accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            rating.isVerified ? Icons.verified_rounded : Icons.info_outline_rounded,
-                            size: 14,
-                            color: rating.isVerified ? const Color(0xFF4CAF50) : subtextColor,
-                          ),
-                          const SizedBox(width: 5),
+                          Icon(Icons.star_rounded, size: 16, color: ThemeService.accent),
+                          const SizedBox(width: 3),
                           Text(
-                            rating.isAnonymous
-                                ? 'Anonymous'
-                                : rating.isVerified
-                                ? 'Verified'
-                                : 'Unverified',
+                            rating.overallStars.toStringAsFixed(0),
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: rating.isVerified ? const Color(0xFF4CAF50) : subtextColor,
+                              color: ThemeService.accent,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    Icon(Icons.access_time_rounded, size: 12, color: subtextColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(rating.createdAt),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: subtextColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                   ],
                 ),
 
-                // Review Text
+                // ── Star breakdown ──
+                Padding(
+                  padding: const EdgeInsets.only(top: 14, bottom: 2),
+                  child: Row(
+                    children: [
+                      _buildMiniStat(LanguageService.tr('development'), rating.question1Stars, subtextColor),
+                      Container(
+                        width: 1,
+                        height: 28,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        color: borderColor,
+                      ),
+                      _buildMiniStat(LanguageService.tr('responsiveness'), rating.question2Stars, subtextColor),
+                      Container(
+                        width: 1,
+                        height: 28,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        color: borderColor,
+                      ),
+                      _buildMiniStat(LanguageService.tr('integrity'), rating.question3Stars, subtextColor),
+                    ],
+                  ),
+                ),
+
+                // ── Review text ──
                 if (rating.reviewText != null && rating.reviewText!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: widget.isDarkMode
-                          ? const Color(0xFF2A2A2A)
-                          : const Color(0xFFF8F8F8),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.format_quote_rounded,
-                          color: subtextColor.withValues(alpha: 0.4),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            rating.reviewText!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: textColor,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      '"${LanguageService.translitName(rating.reviewText!)}"',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: subtextColor,
+                        fontStyle: FontStyle.italic,
+                        height: 1.5,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
 
-                const SizedBox(height: 16),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _editRating(rating),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: BorderSide(
-                            color: widget.isDarkMode
-                                ? const Color(0xFF3A3A3A)
-                                : const Color(0xFFE0E0E0),
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                // ── Footer: status + date + actions ──
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Row(
+                    children: [
+                      // Status chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: rating.isVerified
+                              ? const Color(0xFF4CAF50).withValues(alpha: 0.1)
+                              : subtextColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        icon: Icon(
-                          Icons.edit_rounded,
-                          size: 18,
-                          color: textColor,
-                        ),
-                        label: Text(
-                          'Edit',
+                        child: Text(
+                          rating.isAnonymous
+                              ? LanguageService.tr('anonymous')
+                              : rating.isVerified
+                                  ? LanguageService.tr('verified')
+                                  : LanguageService.tr('unverified'),
                           style: TextStyle(
-                            color: textColor,
-                            fontSize: 14,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
+                            color: rating.isVerified ? const Color(0xFF4CAF50) : subtextColor,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _deleteRating(rating),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(
-                            color: Color(0xFFFF385C),
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(
-                          Icons.delete_rounded,
-                          size: 18,
-                          color: Color(0xFFFF385C),
-                        ),
-                        label: const Text(
-                          'Delete',
-                          style: TextStyle(
-                            color: Color(0xFFFF385C),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDate(rating.createdAt),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: subtextColor,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      // Edit icon
+                      _buildActionIcon(
+                        Icons.edit_outlined,
+                        subtextColor,
+                        () => _editRating(rating),
+                      ),
+                      const SizedBox(width: 4),
+                      // Delete icon
+                      _buildActionIcon(
+                        Icons.delete_outline_rounded,
+                        subtextColor,
+                        () => _deleteRating(rating),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -582,25 +461,53 @@ class _RatePageState extends State<RatePage> {
     );
   }
 
-  Widget _buildPlaceholderAvatar(String name) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFFFF385C),
-            const Color(0xFFFF385C).withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildMiniStat(String label, int stars, Color subtextColor) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: subtextColor,
+              letterSpacing: 0.1,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          _buildStarRow(stars, size: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionIcon(IconData icon, Color color, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
+    );
+  }
+
+  Widget _buildPlaceholderAvatar(String name) {
+    return Container(
+      color: ThemeService.accent,
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : 'U',
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: 18,
           ),
         ),
       ),
@@ -625,190 +532,164 @@ class _RatePageState extends State<RatePage> {
     }
   }
 
+  // ─── Empty/auth states ──────────────────────────────────────────
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 56,
+              color: subtextColor.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: subtextColor,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA);
+    final backgroundColor = widget.isDarkMode ? ThemeService.bgMain : const Color(0xFFF7F7F7);
     final textColor = widget.isDarkMode ? Colors.white : const Color(0xFF222222);
     final subtextColor = widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
-    
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: _isLoading
             ? Center(
                 child: CircularProgressIndicator(
-                  color: const Color(0xFFFF385C),
-                  strokeWidth: 3,
+                  color: ThemeService.accent,
+                  strokeWidth: 2.5,
                 ),
               )
             : !_isAuthenticated
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: widget.isDarkMode
-                          ? const Color(0xFF2A2A2A)
-                          : const Color(0xFFF0F0F0),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.login_rounded,
-                      size: 64,
-                      color: subtextColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Sign In Required',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Please sign in to view your ratings',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: subtextColor,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _userRatings.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: widget.isDarkMode
-                          ? const Color(0xFF2A2A2A)
-                          : const Color(0xFFF0F0F0),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.star_outline_rounded,
-                      size: 64,
-                      color: subtextColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'No Ratings Yet',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Search for representatives to rate them',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: subtextColor,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                  decoration: BoxDecoration(
-                    color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.06),
-                        blurRadius: 12,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'My Ratings',
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${_userRatings.length} ${_userRatings.length == 1 ? 'rating' : 'ratings'}',
-                              style: TextStyle(
-                                color: subtextColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (widget.isVerified)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF4CAF50),
-                                const Color(0xFF4CAF50).withValues(alpha: 0.8),
+                ? _buildEmptyState(
+                    icon: Icons.person_outline_rounded,
+                    title: LanguageService.tr('sign_in_required'),
+                    subtitle: LanguageService.tr('sign_in_subtitle'),
+                    textColor: textColor,
+                    subtextColor: subtextColor,
+                  )
+                : _userRatings.isEmpty
+                    ? _buildEmptyState(
+                        icon: Icons.star_outline_rounded,
+                        title: LanguageService.tr('no_ratings'),
+                        subtitle: LanguageService.tr('no_ratings_subtitle'),
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      )
+                    : Column(
+                        children: [
+                          // ── Header ──
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        LanguageService.tr('my_ratings'),
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${_userRatings.length} ${_userRatings.length == 1 ? LanguageService.tr('rating') : LanguageService.tr('ratings')}',
+                                        style: TextStyle(
+                                          color: subtextColor,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (widget.isVerified)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.verified_rounded,
+                                          color: Color(0xFF4CAF50),
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          LanguageService.tr('verified'),
+                                          style: const TextStyle(
+                                            color: Color(0xFF4CAF50),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.verified_user_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Verified',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.3,
+
+                          // ── Ratings list ──
+                          Expanded(
+                            child: RefreshIndicator(
+                              color: ThemeService.accent,
+                              onRefresh: _refreshRatings,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                                itemCount: _userRatings.length,
+                                itemBuilder: (context, index) => _buildRatingCard(
+                                  _userRatings[index],
+                                  textColor: textColor,
+                                  subtextColor: subtextColor,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-                // Ratings List
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _userRatings.length,
-                    itemBuilder: (context, index) => _buildRatingCard(_userRatings[index]),
-                  ),
-                ),
-              ],
-            ),
+                        ],
+                      ),
       ),
     );
   }

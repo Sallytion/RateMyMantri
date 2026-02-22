@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:shimmer/shimmer.dart';
 import '../models/representative.dart';
+import '../services/language_service.dart';
 import '../services/representative_service.dart';
+import '../services/theme_service.dart';
 import '../pages/representative_detail_page.dart';
+import 'skeleton_widgets.dart';
 
 class IndiaPCMapWidget extends StatefulWidget {
   final bool isDarkMode;
@@ -80,7 +85,6 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
           }
         }
       } catch (e) {
-        debugPrint('Nominatim reverse geocode error: $e');
       }
 
       // Drop pin
@@ -99,7 +103,7 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
       showModalBottomSheet(
         context: context,
         backgroundColor: widget.isDarkMode
-            ? const Color(0xFF1E1E1E)
+            ? ThemeService.bgCard
             : Colors.white,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -120,7 +124,6 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
         ),
       );
     } catch (e) {
-      debugPrint('Error handling map tap: $e');
     }
   }
 
@@ -269,7 +272,6 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching representatives: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -282,15 +284,15 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
   String _getOfficeLabel(String officeType) {
     switch (officeType) {
       case 'LOK_SABHA':
-        return 'MP (Lok Sabha)';
+        return LanguageService.tr('mp_lok_sabha');
       case 'STATE_ASSEMBLY':
-        return 'MLA';
+        return LanguageService.tr('mla');
       case 'RAJYA_SABHA':
-        return 'MP (Rajya Sabha)';
+        return LanguageService.tr('mp_rajya_sabha');
       case 'VIDHAN_PARISHAD':
-        return 'MLC';
+        return LanguageService.tr('mlc');
       default:
-        return officeType;
+        return LanguageService.translitName(officeType);
     }
   }
 
@@ -315,6 +317,15 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
     }
   }
 
+  /// Transliterates [text] only if the backend hasn't already done so.
+  /// Once the backend adds ?lang= support to /v2/my-representatives,
+  /// it will return non-ASCII text and this becomes a no-op.
+  String _safeTranslit(String text) {
+    if (text.isEmpty || LanguageService.isEnglish) return text;
+    if (text.runes.any((r) => r > 127)) return text; // already transliterated
+    return LanguageService.translitName(text);
+  }
+
   String _formatName(String name) {
     return name
         .split(' ')
@@ -331,7 +342,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
     final subtextColor =
         widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
     final cardBg =
-        widget.isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5);
+        widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFF5F5F5);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.5,
@@ -358,9 +369,9 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
               // Header
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.location_on,
-                    color: Color(0xFFFF385C),
+                    color: ThemeService.accent,
                     size: 24,
                   ),
                   const SizedBox(width: 10),
@@ -370,8 +381,8 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                       children: [
                         Text(
                           widget.pcName != null
-                              ? _formatName(widget.pcName!)
-                              : 'Unknown Location',
+                              ? LanguageService.translitName(_formatName(widget.pcName!))
+                              : LanguageService.tr('unknown_location'),
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -380,7 +391,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                         ),
                         if (widget.stateName != null)
                           Text(
-                            _formatName(widget.stateName!),
+                            LanguageService.translitName(_formatName(widget.stateName!)),
                             style: TextStyle(
                               fontSize: 14,
                               color: subtextColor,
@@ -419,7 +430,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Representatives',
+                  LanguageService.tr('representatives'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -431,11 +442,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
               // Content
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFFF385C),
-                        ),
-                      )
+                    ? MapRepListSkeleton(isDarkMode: widget.isDarkMode)
                     : _hasError || widget.pcName == null
                         ? Center(
                             child: Column(
@@ -448,7 +455,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'Tap on a constituency\nto see representatives',
+                                  LanguageService.tr('tap_constituency_map'),
                                   style: TextStyle(
                                     fontSize: 15,
                                     color: subtextColor,
@@ -471,7 +478,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
-                                      'No representatives found\nfor this constituency',
+                                      LanguageService.tr('no_reps_constituency'),
                                       style: TextStyle(
                                         fontSize: 15,
                                         color: subtextColor,
@@ -484,7 +491,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                             : ListView.separated(
                                 controller: scrollController,
                                 itemCount: _representatives.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const SizedBox(height: 10),
                                 padding:
                                     const EdgeInsets.only(bottom: 20),
@@ -538,19 +545,41 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
         child: Row(
           children: [
             // Avatar / Image
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: partyColor.withValues(alpha: 0.15),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: rep.imageUrl != null && rep.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      rep.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
+            Hero(
+              tag: 'rep_avatar_${rep.id}',
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: partyColor.withValues(alpha: 0.15),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: rep.imageUrl != null && rep.imageUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: rep.imageUrl!,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 104,
+                        memCacheHeight: 104,
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Container(color: Colors.white),
+                        ),
+                        errorWidget: (_, _, _) => Center(
+                          child: Text(
+                            rep.fullName.isNotEmpty
+                                ? rep.fullName[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: partyColor,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
                         child: Text(
                           rep.fullName.isNotEmpty
                               ? rep.fullName[0].toUpperCase()
@@ -562,19 +591,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                           ),
                         ),
                       ),
-                    )
-                  : Center(
-                      child: Text(
-                        rep.fullName.isNotEmpty
-                            ? rep.fullName[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: partyColor,
-                        ),
-                      ),
-                    ),
+              ),
             ),
             const SizedBox(width: 14),
             // Info
@@ -583,7 +600,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _formatName(rep.fullName),
+                    _safeTranslit(_formatName(rep.fullName)),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -603,7 +620,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          rep.party,
+                          _safeTranslit(rep.party),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -627,7 +644,7 @@ class _RepresentativesSheetState extends State<_RepresentativesSheet> {
                   if (rep.constituency.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
-                      '${rep.constituency}, ${rep.state}',
+                      '${_safeTranslit(rep.constituency)}, ${_safeTranslit(rep.state)}',
                       style: TextStyle(
                         fontSize: 12,
                         color: subtextColor,

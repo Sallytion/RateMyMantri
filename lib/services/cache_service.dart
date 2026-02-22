@@ -90,22 +90,27 @@ class CacheService {
     }
   }
 
-  /// Cache JSON data
-  static Future<bool> cacheData(String key, Map<String, dynamic> data) async {
+  /// Cache JSON data with optional TTL metadata
+  static Future<bool> cacheData(String key, Map<String, dynamic> data, {Duration? ttl}) async {
     try {
       final cacheDir = await _getDataCacheDir();
       final cacheKey = _getCacheKey(key);
       final cachedFile = File('${cacheDir.path}/$cacheKey.json');
 
-      await cachedFile.writeAsString(jsonEncode(data));
+      final wrapper = {
+        'data': data,
+        'cachedAt': DateTime.now().toIso8601String(),
+        if (ttl != null) 'ttlMs': ttl.inMilliseconds,
+      };
+      await cachedFile.writeAsString(jsonEncode(wrapper));
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  /// Get cached JSON data
-  static Future<Map<String, dynamic>?> getCachedData(String key) async {
+  /// Get cached JSON data. Returns null if expired or not found.
+  static Future<Map<String, dynamic>?> getCachedData(String key, {Duration? maxAge}) async {
     try {
       final cacheDir = await _getDataCacheDir();
       final cacheKey = _getCacheKey(key);
@@ -113,7 +118,72 @@ class CacheService {
 
       if (await cachedFile.exists()) {
         final content = await cachedFile.readAsString();
-        return jsonDecode(content) as Map<String, dynamic>;
+        final decoded = jsonDecode(content) as Map<String, dynamic>;
+
+        // Check if it's a wrapped format with TTL
+        if (decoded.containsKey('cachedAt') && decoded.containsKey('data')) {
+          final cachedAt = DateTime.parse(decoded['cachedAt'] as String);
+          final ttlMs = decoded['ttlMs'] as int?;
+          final effectiveMaxAge = maxAge ?? (ttlMs != null ? Duration(milliseconds: ttlMs) : null);
+
+          if (effectiveMaxAge != null && DateTime.now().difference(cachedAt) > effectiveMaxAge) {
+            // Expired — delete and return null
+            await cachedFile.delete();
+            return null;
+          }
+          return decoded['data'] as Map<String, dynamic>;
+        }
+
+        // Legacy format (no wrapper) — return as-is
+        return decoded;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Cache a JSON list with optional TTL metadata
+  static Future<bool> cacheListData(String key, List<dynamic> data, {Duration? ttl}) async {
+    try {
+      final cacheDir = await _getDataCacheDir();
+      final cacheKey = _getCacheKey(key);
+      final cachedFile = File('${cacheDir.path}/$cacheKey.json');
+
+      final wrapper = {
+        'listData': data,
+        'cachedAt': DateTime.now().toIso8601String(),
+        if (ttl != null) 'ttlMs': ttl.inMilliseconds,
+      };
+      await cachedFile.writeAsString(jsonEncode(wrapper));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get cached JSON list. Returns null if expired or not found.
+  static Future<List<dynamic>?> getCachedListData(String key, {Duration? maxAge}) async {
+    try {
+      final cacheDir = await _getDataCacheDir();
+      final cacheKey = _getCacheKey(key);
+      final cachedFile = File('${cacheDir.path}/$cacheKey.json');
+
+      if (await cachedFile.exists()) {
+        final content = await cachedFile.readAsString();
+        final decoded = jsonDecode(content) as Map<String, dynamic>;
+
+        if (decoded.containsKey('cachedAt') && decoded.containsKey('listData')) {
+          final cachedAt = DateTime.parse(decoded['cachedAt'] as String);
+          final ttlMs = decoded['ttlMs'] as int?;
+          final effectiveMaxAge = maxAge ?? (ttlMs != null ? Duration(milliseconds: ttlMs) : null);
+
+          if (effectiveMaxAge != null && DateTime.now().difference(cachedAt) > effectiveMaxAge) {
+            await cachedFile.delete();
+            return null;
+          }
+          return decoded['listData'] as List<dynamic>;
+        }
       }
       return null;
     } catch (e) {
@@ -157,6 +227,34 @@ class CacheService {
       if (await dataCacheDir.exists()) {
         await dataCacheDir.delete(recursive: true);
       }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  /// Invalidate a specific cache key
+  static Future<void> invalidate(String key) async {
+    try {
+      final cacheDir = await _getDataCacheDir();
+      final cacheKey = _getCacheKey(key);
+      final cachedFile = File('${cacheDir.path}/$cacheKey.json');
+      if (await cachedFile.exists()) {
+        await cachedFile.delete();
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  /// Invalidate all cache keys matching a prefix (scans directory)
+  static Future<void> invalidateByPrefix(String prefix) async {
+    try {
+      final cacheDir = await _getDataCacheDir();
+      if (!await cacheDir.exists()) return;
+      // Since we hash keys, we can't match by prefix on hashed keys.
+      // Instead, maintain a simple approach: clear all data cache when needed.
+      // For targeted invalidation, callers should use invalidate() with exact keys.
+      await cacheDir.delete(recursive: true);
     } catch (e) {
       // Silently fail
     }

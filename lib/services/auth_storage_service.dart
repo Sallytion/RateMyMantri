@@ -68,16 +68,11 @@ class AuthStorageService {
   // Clear all auth data (for logout)
   static Future<void> clearAuthData() async {
     final prefs = await SharedPreferences.getInstance();
-    // Clear specific keys
+    // Clear only auth-specific keys (preserve cached city, saved articles, etc.)
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userDataKey);
     await prefs.remove(_aadhaarVerifiedKey);
-
-    // Also clear everything to be safe
-    await prefs.clear();
-
-    print('All auth data and local storage cleared');
   }
 
   // Save complete auth response
@@ -103,7 +98,6 @@ class AuthStorageService {
       final refreshToken = await getRefreshToken();
 
       if (refreshToken == null || refreshToken.isEmpty) {
-        print('No refresh token available');
         return false;
       }
 
@@ -123,16 +117,12 @@ class AuthStorageService {
             accessToken: tokens['accessToken'] as String,
             refreshToken: tokens['refreshToken'] as String,
           );
-          print('Tokens refreshed successfully');
           return true;
         }
       } else {
-        print('Token refresh failed: ${response.statusCode}');
-        print('Response: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('Error refreshing token: $e');
       return false;
     }
 
@@ -165,7 +155,6 @@ class AuthStorageService {
 
         // If token expires in less than 5 minutes, refresh it
         if (expiryDate.isBefore(now.add(const Duration(minutes: 5)))) {
-          print('Access token expiring soon, refreshing...');
           final refreshed = await refreshAccessToken();
           if (refreshed) {
             accessToken = await getAccessToken();
@@ -173,7 +162,6 @@ class AuthStorageService {
         }
       }
     } catch (e) {
-      print('Error checking token expiration: $e');
       // If we can't parse, return the token anyway
     }
 
@@ -186,7 +174,6 @@ class AuthStorageService {
       final accessToken = await getValidAccessToken();
 
       if (accessToken == null) {
-        print('No access token available');
         return null;
       }
 
@@ -203,7 +190,6 @@ class AuthStorageService {
         final userData = responseData['user'] as Map<String, dynamic>?;
 
         if (userData == null) {
-          print('User data not found in response');
           return null;
         }
 
@@ -214,20 +200,13 @@ class AuthStorageService {
         final isAadhaarVerified = userData['is_verified'] == true;
         await saveAadhaarVerificationStatus(isAadhaarVerified);
 
-        print('User profile fetched successfully');
-        print('Aadhaar verified: $isAadhaarVerified');
-
         return userData;
       } else if (response.statusCode == 401) {
-        print('Unauthorized - token may be invalid');
         return null;
       } else {
-        print('Failed to fetch user profile: ${response.statusCode}');
-        print('Response: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error fetching user profile: $e');
       return null;
     }
   }

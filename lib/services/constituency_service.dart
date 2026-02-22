@@ -45,7 +45,6 @@ class ConstituencyService {
         );
       }
     } catch (e) {
-      print('Error searching constituencies: $e');
       return {'constituencies': <Constituency>[], 'count': 0};
     }
   }
@@ -79,7 +78,6 @@ class ConstituencyService {
         );
       }
     } catch (e) {
-      print('Error getting current constituency: $e');
       return null;
     }
   }
@@ -116,7 +114,6 @@ class ConstituencyService {
         throw Exception('Failed to set constituency: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error setting constituency: $e');
       return {'success': false, 'constituency': null};
     }
   }

@@ -6,6 +6,8 @@ import 'search_page.dart';
 import 'rate_page.dart';
 import 'news_page.dart';
 import 'profile_page.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 
 class MainScreen extends StatefulWidget {
   final String userName;
@@ -30,10 +32,37 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   bool _isDarkMode = false;
+  DarkModeOption _darkModeOption = DarkModeOption.system;
+  int _accentColorIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadThemePreferences();
+  }
+
+  Future<void> _loadThemePreferences() async {
+    final option = await ThemeService.loadDarkMode();
+    final colorIndex = await ThemeService.loadAccentColorIndex();
+    if (mounted) {
+      setState(() {
+        _darkModeOption = option;
+        _accentColorIndex = colorIndex;
+        _isDarkMode = ThemeService.resolveIsDark(
+          option,
+          WidgetsBinding.instance.platformDispatcher.platformBrightness,
+        );
+      });
+      _applyTheme();
+    }
+  }
+
+  void _applyTheme() {
+    ThemeService.apply(
+      accentIndex: _accentColorIndex,
+      darkMode: _darkModeOption,
+      platformBrightness: WidgetsBinding.instance.platformDispatcher.platformBrightness,
+    );
     _updateSystemUI();
   }
 
@@ -42,17 +71,40 @@ class _MainScreenState extends State<MainScreen> {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: _isDarkMode ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+        systemNavigationBarColor: _isDarkMode ? ThemeService.bgMain : Colors.white,
         systemNavigationBarIconBrightness: _isDarkMode ? Brightness.light : Brightness.dark,
       ),
     );
   }
 
   void _toggleDarkMode(bool value) {
+    // Legacy toggle — maps to dark/light
+    _setDarkModeOption(value ? DarkModeOption.dark : DarkModeOption.light);
+  }
+
+  void _setDarkModeOption(DarkModeOption option) {
+    ThemeService.saveDarkMode(option);
     setState(() {
-      _isDarkMode = value;
-      _updateSystemUI();
+      _darkModeOption = option;
+      _isDarkMode = ThemeService.resolveIsDark(
+        option,
+        WidgetsBinding.instance.platformDispatcher.platformBrightness,
+      );
     });
+    _applyTheme();
+  }
+
+  void _setAccentColor(int index) {
+    ThemeService.saveAccentColorIndex(index);
+    setState(() {
+      _accentColorIndex = index;
+    });
+    _applyTheme();
+  }
+
+  void _setLanguage(String code) {
+    LanguageService.setLanguage(code);
+    setState(() {});
   }
 
   @override
@@ -61,17 +113,22 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          HomePage(isDarkMode: _isDarkMode, onNavigateToTab: (index) {
+          HomePage(isDarkMode: _isDarkMode, languageCode: LanguageService.languageCode, onNavigateToTab: (index) {
             setState(() {
               _currentIndex = index;
             });
           }),
           SearchPage(key: SearchPage.globalKey, isDarkMode: _isDarkMode),
           RatePage(isDarkMode: _isDarkMode, isVerified: widget.isVerified),
-          NewsPage(isDarkMode: _isDarkMode),
+          NewsPage(isDarkMode: _isDarkMode, languageCode: LanguageService.languageCode),
           ProfilePage(
             isDarkMode: _isDarkMode,
             onDarkModeToggle: _toggleDarkMode,
+            darkModeOption: _darkModeOption,
+            accentColorIndex: _accentColorIndex,
+            onDarkModeOptionChanged: _setDarkModeOption,
+            onAccentColorChanged: _setAccentColor,
+            onLanguageChanged: _setLanguage,
             userName: widget.userName,
             isVerified: widget.isVerified,
             userEmail: widget.userEmail,
@@ -82,7 +139,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+          color: _isDarkMode ? ThemeService.bgMain : Colors.white,
           boxShadow: [
             BoxShadow(
               blurRadius: 20,
@@ -95,42 +152,40 @@ class _MainScreenState extends State<MainScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
             child: GNav(
               rippleColor: _isDarkMode
-                  ? const Color(0xFF2A2A2A)
+                  ? ThemeService.bgElev
                   : Colors.grey[300]!,
               hoverColor: _isDarkMode
-                  ? const Color(0xFF2A2A2A)
+                  ? ThemeService.bgElev
                   : Colors.grey[100]!,
               gap: 8,
-              activeColor: _isDarkMode
-                  ? const Color(0xFFFF385C)
-                  : Colors.deepPurple,
+              activeColor: ThemeService.accent,
               iconSize: 24,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               duration: const Duration(milliseconds: 400),
               tabBackgroundColor: _isDarkMode
-                  ? const Color(0xFF2A2A2A)
-                  : Colors.deepPurple.withValues(alpha: 0.1),
+                  ? ThemeService.bgElev
+                  : ThemeService.accent.withValues(alpha: 0.1),
               color: _isDarkMode ? const Color(0xFF717171) : Colors.grey,
-              tabs: const [
+              tabs: [
                 GButton(
                   icon: Icons.home,
-                  text: 'Home',
+                  text: LanguageService.tr('nav_home'),
                 ),
                 GButton(
                   icon: Icons.search,
-                  text: 'Search',
+                  text: LanguageService.tr('nav_search'),
                 ),
                 GButton(
                   icon: Icons.star,
-                  text: 'Rate',
+                  text: LanguageService.tr('nav_rate'),
                 ),
                 GButton(
                   icon: Icons.article,
-                  text: 'News',
+                  text: LanguageService.tr('nav_news'),
                 ),
                 GButton(
                   icon: Icons.person,
-                  text: 'Profile',
+                  text: LanguageService.tr('nav_profile'),
                 ),
               ],
               selectedIndex: _currentIndex,

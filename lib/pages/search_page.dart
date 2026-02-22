@@ -1,7 +1,13 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import '../models/representative.dart';
 import '../services/representative_service.dart';
+import '../services/prefetch_service.dart';
+import '../services/theme_service.dart';
+import '../services/language_service.dart';
+import '../widgets/skeleton_widgets.dart';
 import 'representative_detail_page.dart';
 import '../widgets/india_pc_map_widget.dart';
 
@@ -11,6 +17,7 @@ class SearchPage extends StatefulWidget {
   const SearchPage({super.key, required this.isDarkMode});
 
   /// Global key so MainScreen can call methods on the state.
+  // ignore: library_private_types_in_public_api
   static final GlobalKey<_SearchPageState> globalKey = GlobalKey<_SearchPageState>();
 
   @override
@@ -19,6 +26,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final RepresentativeService _representativeService = RepresentativeService();
+  final PrefetchService _prefetchService = PrefetchService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -26,11 +34,6 @@ class _SearchPageState extends State<SearchPage> {
   static List<Representative>? _cachedResults;
   static String? _cachedQuery;
 
-  /// Call this to force-clear cached search data.
-  static void clearCache() {
-    _cachedResults = null;
-    _cachedQuery = null;
-  }
   
   List<Representative> _searchResults = [];
   bool _isSearching = false;
@@ -89,7 +92,7 @@ class _SearchPageState extends State<SearchPage> {
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
       try {
         final response = await _representativeService.searchRepresentatives(
-          query,
+          LanguageService.translitToLatin(query),
           limit: 50,
         );
         final results = (response['results'] as List?)?.cast<Representative>() ?? [];
@@ -137,8 +140,8 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA);
-    final cardColor = widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final backgroundColor = widget.isDarkMode ? ThemeService.bgAlt : const Color(0xFFFAFAFA);
+    final cardColor = widget.isDarkMode ? ThemeService.bgCard : Colors.white;
     final textColor = widget.isDarkMode ? Colors.white : const Color(0xFF222222);
     final subtextColor = widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
     
@@ -146,57 +149,37 @@ class _SearchPageState extends State<SearchPage> {
       backgroundColor: backgroundColor,
       body: Column(
         children: [
-          // Enhanced Search Header
-          Container(
-            decoration: BoxDecoration(
-              color: cardColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Find Representatives',
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
+          // Search Header
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    LanguageService.tr('search'),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Search Input
+                  Container(
+                    decoration: BoxDecoration(
+                      color: widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFF0F0F0),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _searchFocusNode.hasFocus
+                            ? ThemeService.accent.withValues(alpha: 0.4)
+                            : Colors.transparent,
+                        width: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Search by name, constituency, or state',
-                      style: TextStyle(
-                        color: subtextColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Search Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: widget.isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: _searchFocusNode.hasFocus
-                              ? const Color(0xFFFF385C)
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: TextField(
+                    child: TextField(
                         controller: _searchController,
                         focusNode: _searchFocusNode,
                         onChanged: _onSearchChanged,
@@ -206,7 +189,7 @@ class _SearchPageState extends State<SearchPage> {
                           fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Start typing to search...',
+                          hintText: LanguageService.tr('search_hint'),
                           hintStyle: TextStyle(
                             color: subtextColor.withValues(alpha: 0.6),
                             fontSize: 16,
@@ -217,20 +200,20 @@ class _SearchPageState extends State<SearchPage> {
                             child: Icon(
                               Icons.search_rounded,
                               color: _searchFocusNode.hasFocus
-                                  ? const Color(0xFFFF385C)
+                                  ? ThemeService.accent
                                   : subtextColor,
                               size: 24,
                             ),
                           ),
                           suffixIcon: _isSearching
-                              ? const Padding(
-                                  padding: EdgeInsets.all(14.0),
+                              ? Padding(
+                                  padding: const EdgeInsets.all(14.0),
                                   child: SizedBox(
                                     width: 20,
                                     height: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF385C)),
+                                      valueColor: AlwaysStoppedAnimation<Color>(ThemeService.accent),
                                     ),
                                   ),
                                 )
@@ -267,14 +250,23 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
-          ),
 
           // Results Section
           Expanded(
             child: _searchController.text.isEmpty
                 ? IndiaPCMapWidget(isDarkMode: widget.isDarkMode)
-                : _searchResults.isEmpty && !_isSearching
-                    ? Center(
+                : _isSearching && _searchResults.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Column(
+                          children: List.generate(
+                            5,
+                            (_) => SearchResultSkeleton(isDarkMode: widget.isDarkMode),
+                          ),
+                        ),
+                      )
+                    : _searchResults.isEmpty
+                        ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -282,7 +274,7 @@ class _SearchPageState extends State<SearchPage> {
                               padding: const EdgeInsets.all(32),
                               decoration: BoxDecoration(
                                 color: widget.isDarkMode
-                                    ? const Color(0xFF2A2A2A)
+                                    ? ThemeService.bgElev
                                     : const Color(0xFFF0F0F0),
                                 shape: BoxShape.circle,
                               ),
@@ -294,7 +286,7 @@ class _SearchPageState extends State<SearchPage> {
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              'No Results Found',
+                              LanguageService.tr('no_results'),
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
@@ -303,7 +295,7 @@ class _SearchPageState extends State<SearchPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Try adjusting your search',
+                              LanguageService.tr('try_adjusting_search'),
                               style: TextStyle(
                                 fontSize: 15,
                                 color: subtextColor,
@@ -312,12 +304,14 @@ class _SearchPageState extends State<SearchPage> {
                             ),
                           ],
                         ),
-                      )
-                    : ListView.builder(
+                          )
+                        : ListView.builder(
                         padding: const EdgeInsets.all(20),
                         itemCount: _searchResults.length,
                         itemBuilder: (context, index) {
                           final rep = _searchResults[index];
+                          // Prefetch data as items become visible
+                          _prefetchService.prefetch(rep.id.toString());
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
@@ -336,6 +330,7 @@ class _SearchPageState extends State<SearchPage> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(20),
                                 onTap: () => _selectRepresentative(rep),
+                                onLongPress: () => _prefetchService.prefetch(rep.id.toString()),
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Row(
@@ -348,21 +343,31 @@ class _SearchPageState extends State<SearchPage> {
                                           borderRadius: BorderRadius.circular(16),
                                           border: Border.all(
                                             color: widget.isDarkMode
-                                                ? const Color(0xFF3A3A3A)
+                                                ? ThemeService.bgBorder
                                                 : const Color(0xFFE0E0E0),
                                             width: 2,
                                           ),
                                         ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(14),
-                                          child: rep.imageUrl != null && rep.imageUrl!.isNotEmpty
-                                              ? Image.network(
-                                                  rep.imageUrl!,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) =>
-                                                      _buildPlaceholderAvatar(rep, textColor),
-                                                )
-                                              : _buildPlaceholderAvatar(rep, textColor),
+                                        child: Hero(
+                                          tag: 'rep_avatar_${rep.id}',
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(14),
+                                            child: rep.imageUrl != null && rep.imageUrl!.isNotEmpty
+                                                ? CachedNetworkImage(
+                                                    imageUrl: rep.imageUrl!,
+                                                    fit: BoxFit.cover,
+                                                    memCacheWidth: 136,
+                                                    memCacheHeight: 136,
+                                                    placeholder: (context, url) => Shimmer.fromColors(
+                                                      baseColor: Colors.grey[300]!,
+                                                      highlightColor: Colors.grey[100]!,
+                                                      child: Container(color: Colors.white),
+                                                    ),
+                                                    errorWidget: (context, url, error) =>
+                                                        _buildPlaceholderAvatar(rep, textColor),
+                                                  )
+                                                : _buildPlaceholderAvatar(rep, textColor),
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -475,8 +480,8 @@ class _SearchPageState extends State<SearchPage> {
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             colors: [
-                                              const Color(0xFFFF385C),
-                                              const Color(0xFFFF385C).withValues(alpha: 0.8),
+                                              ThemeService.accent,
+                                              ThemeService.accent.withValues(alpha: 0.8),
                                             ],
                                           ),
                                           borderRadius: BorderRadius.circular(12),
@@ -513,8 +518,8 @@ class _SearchPageState extends State<SearchPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFFFF385C),
-            const Color(0xFFFF385C).withValues(alpha: 0.7),
+            ThemeService.accent,
+            ThemeService.accent.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

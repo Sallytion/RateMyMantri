@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/aadhar_data.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 import 'main_screen.dart';
 
 class AadharResultPage extends StatelessWidget {
@@ -33,11 +35,13 @@ class AadharResultPage extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          isSkipped ? 'Continue Without Verification' : 'Verification Result',
+          isSkipped ? LanguageService.tr('unverified_label') : LanguageService.tr('result'),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2),
         ),
         backgroundColor: statusColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -58,7 +62,7 @@ class AadharResultPage extends StatelessWidget {
                   Icon(_getStatusIcon(), size: 80, color: Colors.white),
                   const SizedBox(height: 16),
                   Text(
-                    data.statusLabel,
+                    LanguageService.translitName(data.statusLabel),
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -77,7 +81,7 @@ class AadharResultPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      data.statusDescription,
+                      LanguageService.translitName(data.statusDescription),
                       style: const TextStyle(
                         fontSize: 13,
                         color: Colors.white,
@@ -127,8 +131,8 @@ class AadharResultPage extends StatelessWidget {
                         children: [
                           Text(
                             data.userType == UserType.verified
-                                ? 'VERIFIED USER'
-                                : 'UNVERIFIED USER',
+                                ? LanguageService.tr('verified_user').toUpperCase()
+                                : LanguageService.tr('unverified_user').toUpperCase(),
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -139,8 +143,8 @@ class AadharResultPage extends StatelessWidget {
                           ),
                           Text(
                             data.isSecure
-                                ? 'Can be anonymous'
-                                : 'Cannot be anonymous',
+                                ? LanguageService.tr('can_be_anonymous')
+                                : LanguageService.tr('cannot_be_anonymous'),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade700,
@@ -167,7 +171,7 @@ class AadharResultPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Personal Details',
+                          LanguageService.tr('personal_details'),
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -175,12 +179,12 @@ class AadharResultPage extends StatelessWidget {
                           ),
                         ),
                         const Divider(height: 24),
-                        _buildDetailRow('ðŸ‘¤ Name', data.name),
-                        _buildDetailRow('ðŸŽ‚ Date of Birth', data.dob),
-                        _buildDetailRow('âš¥ Gender', data.gender),
+                        _buildDetailRow('👤 ${LanguageService.tr('name_label')}', LanguageService.translitName(data.name)),
+                        _buildDetailRow('🎂 ${LanguageService.tr('dob_label')}', data.dob),
+                        _buildDetailRow('⚥ ${LanguageService.tr('gender_label')}', LanguageService.translitName(data.gender)),
                         if (data.careOf != null && data.careOf!.isNotEmpty)
-                          _buildDetailRow('ðŸ‘ª Care Of', data.careOf!),
-                        _buildDetailRow('ðŸ  Address', data.address),
+                          _buildDetailRow('👪 ${LanguageService.tr('care_of_label')}', LanguageService.translitName(data.careOf!)),
+                        _buildDetailRow('🏠 ${LanguageService.tr('address_label')}', LanguageService.translitName(data.address)),
                       ],
                     ),
                   ),
@@ -203,7 +207,7 @@ class AadharResultPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Card Information',
+                          LanguageService.tr('card_information'),
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -211,9 +215,9 @@ class AadharResultPage extends StatelessWidget {
                           ),
                         ),
                         const Divider(height: 24),
-                        _buildDetailRow('ðŸ“… Card Generated', data.cardGenDate),
-                        _buildDetailRow('ðŸ’³ UID (Last 4)', data.uidLast4),
-                        _buildDetailRow('ðŸ” QR Type', _getQRTypeName()),
+                        _buildDetailRow('📅 ${LanguageService.tr('card_generated')}', data.cardGenDate),
+                        _buildDetailRow('💳 ${LanguageService.tr('uid_last4')}', data.uidLast4),
+                        _buildDetailRow('🔍 ${LanguageService.tr('qr_type')}', _getQRTypeName()),
                         if (rawQrData != null) ...[
                           const Divider(height: 24),
                           Row(
@@ -231,8 +235,8 @@ class AadharResultPage extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   backendVerified
-                                      ? 'âœ“ Verified with Backend (Hash stored securely)'
-                                      : 'âš  Backend verification pending',
+                                      ? '✔ ${LanguageService.tr('verified_backend')}'
+                                      : '⚠ ${LanguageService.tr('backend_pending')}',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: backendVerified
@@ -292,9 +296,9 @@ class AadharResultPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Continue as Verified User',
-                          style: TextStyle(
+                        child: Text(
+                          LanguageService.tr('continue_verified'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -311,16 +315,16 @@ class AadharResultPage extends StatelessWidget {
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF385C),
+                          backgroundColor: ThemeService.accent,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Scan Official PVC Aadhar QR',
-                          style: TextStyle(
+                        child: Text(
+                          LanguageService.tr('scan_official_pvc'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -353,9 +357,9 @@ class AadharResultPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Continue as Unverified (No Anonymous)',
-                          style: TextStyle(
+                        child: Text(
+                          LanguageService.tr('continue_unverified'),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF222222),
@@ -381,7 +385,7 @@ class AadharResultPage extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'You can verify your Aadhar anytime from Profile settings to enable anonymous ratings',
+                              LanguageService.tr('verify_anytime'),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.blue.shade900,
@@ -411,16 +415,16 @@ class AadharResultPage extends StatelessWidget {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF385C),
+                          backgroundColor: ThemeService.accent,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Continue Without Verification',
-                          style: TextStyle(
+                        child: Text(
+                          LanguageService.tr('continue_without_verification'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -438,16 +442,16 @@ class AadharResultPage extends StatelessWidget {
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF385C),
+                          backgroundColor: ThemeService.accent,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Try Again',
-                          style: TextStyle(
+                        child: Text(
+                          LanguageService.tr('try_again'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -508,11 +512,11 @@ class AadharResultPage extends StatelessWidget {
   String _getQRTypeName() {
     switch (data.type) {
       case QRType.secureV2:
-        return 'Secure V2.0 (Dense QR)';
+        return LanguageService.tr('secure_v2');
       case QRType.digilockerXML:
-        return 'DigiLocker/Text (XML)';
+        return LanguageService.tr('digilocker_xml');
       case QRType.unknown:
-        return 'Unknown';
+        return LanguageService.tr('unknown_type');
     }
   }
 }

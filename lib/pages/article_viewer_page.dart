@@ -1,6 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 
 class ArticleViewerPage extends StatelessWidget {
   final String title;
@@ -32,34 +35,48 @@ class ArticleViewerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
+      backgroundColor: isDarkMode ? ThemeService.bgAlt : Colors.white,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            backgroundColor: isDarkMode ? ThemeService.bgCard : Colors.white,
+            elevation: 0,
+            scrolledUnderElevation: 0,
             leading: IconButton(
-              icon: Icon(
-                Icons.arrow_back,
-                color: isDarkMode ? Colors.white : Colors.black,
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_back_ios_new, size: 16, color: Colors.white),
               ),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
               IconButton(
-                icon: Icon(
-                  Icons.share,
-                  color: isDarkMode ? Colors.white : Colors.black,
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.share_outlined, size: 16, color: Colors.white),
                 ),
                 onPressed: () {
                   Share.share('$title\n\n$originalUrl', subject: title);
                 },
               ),
               IconButton(
-                icon: Icon(
-                  Icons.open_in_browser,
-                  color: isDarkMode ? Colors.white : Colors.black,
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.open_in_browser, size: 16, color: Colors.white),
                 ),
                 onPressed: _openOriginalLink,
               ),
@@ -68,11 +85,17 @@ class ArticleViewerPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    imageUrl,
+                  CachedNetworkImage(
+                    imageUrl: imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey[300],
+                    memCacheWidth: 800,
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholder: (context, url) => Container(
+                      color: isDarkMode ? ThemeService.bgCard : Colors.grey[300],
+                    ),
+                    errorWidget: (_, _, _) => Container(
+                      color: isDarkMode ? ThemeService.bgCard : Colors.grey[300],
                       child: const Icon(Icons.image_not_supported, size: 60),
                     ),
                   ),
@@ -99,7 +122,7 @@ class ArticleViewerPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    LanguageService.translitName(title),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -118,7 +141,7 @@ class ArticleViewerPage extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          source,
+                          LanguageService.translitName(source),
                           style: TextStyle(
                             fontSize: 14,
                             color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
@@ -153,7 +176,7 @@ class ArticleViewerPage extends StatelessWidget {
                   const SizedBox(height: 24),
                   if (articleText != null && articleText!.isNotEmpty)
                     Text(
-                      articleText!,
+                      LanguageService.translitName(articleText!),
                       style: TextStyle(
                         fontSize: 16,
                         height: 1.7,
@@ -164,7 +187,7 @@ class ArticleViewerPage extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey[100],
+                        color: isDarkMode ? ThemeService.bgCard : Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -176,7 +199,7 @@ class ArticleViewerPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Article content could not be extracted',
+                            LanguageService.tr('article_not_extracted'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 15,
@@ -187,7 +210,7 @@ class ArticleViewerPage extends StatelessWidget {
                           ElevatedButton.icon(
                             onPressed: _openOriginalLink,
                             icon: const Icon(Icons.open_in_browser),
-                            label: const Text('Read on Original Site'),
+                            label: Text(LanguageService.tr('read_original')),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[300],
                               foregroundColor: isDarkMode ? Colors.white : Colors.black,
@@ -204,14 +227,14 @@ class ArticleViewerPage extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey[50],
+                      color: isDarkMode ? ThemeService.bgCard : Colors.grey[50],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Credits',
+                          LanguageService.tr('credits'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -220,7 +243,7 @@ class ArticleViewerPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Source: $source',
+                          '${LanguageService.tr('source_label')}: ${LanguageService.translitName(source)}',
                           style: TextStyle(
                             fontSize: 14,
                             color: isDarkMode ? Colors.grey[400] : Colors.grey[700],

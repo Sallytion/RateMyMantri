@@ -47,7 +47,7 @@ class Representative {
 
   factory Representative.fromJson(Map<String, dynamic> json) {
     // Helper function to safely parse int from dynamic value
-    int _parseInt(dynamic value, int defaultValue) {
+    int parseInt(dynamic value, int defaultValue) {
       if (value == null) return defaultValue;
       if (value is int) return value;
       if (value is String) return int.tryParse(value) ?? defaultValue;
@@ -55,7 +55,7 @@ class Representative {
     }
 
     // Helper function to safely parse nullable int from dynamic value
-    int? _parseNullableInt(dynamic value) {
+    int? parseNullableInt(dynamic value) {
       if (value == null) return null;
       if (value is int) return value;
       if (value is String) return int.tryParse(value);
@@ -63,8 +63,8 @@ class Representative {
     }
 
     return Representative(
-      id: _parseInt(json['id'], 0),
-      candidateId: _parseInt(json['candidate_id'], 0),
+      id: parseInt(json['id'], 0),
+      candidateId: parseInt(json['candidate_id'], 0),
       fullName: json['name']?.toString() ?? '',
       officeType: json['office_type']?.toString() ?? '',
       state: json['state']?.toString() ?? '',
@@ -73,16 +73,16 @@ class Representative {
       selfProfession: json['self_profession']?.toString(),
       spouseProfession: json['spouse_profession']?.toString(),
       imageUrl: json['image_url']?.toString(),
-      assets: _parseNullableInt(json['assets']),
-      liabilities: _parseNullableInt(json['liabilities']),
+      assets: parseNullableInt(json['assets']),
+      liabilities: parseNullableInt(json['liabilities']),
       education: json['education']?.toString(),
-      totalCases: _parseInt(json['total_cases'], 0),
-      ipcCasesCount: _parseInt(json['ipc_cases_count'], 0),
-      bnsCasesCount: _parseInt(json['bns_cases_count'], 0),
+      totalCases: parseInt(json['total_cases'], 0),
+      ipcCasesCount: parseInt(json['ipc_cases_count'], 0),
+      bnsCasesCount: parseInt(json['bns_cases_count'], 0),
       averageRating: json['average_rating'] != null 
           ? (json['average_rating'] is num ? (json['average_rating'] as num).toDouble() : null)
           : null,
-      totalRatings: _parseNullableInt(json['total_ratings']),
+      totalRatings: parseNullableInt(json['total_ratings']),
     );
   }
 

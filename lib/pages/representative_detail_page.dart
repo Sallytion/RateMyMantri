@@ -1,12 +1,18 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import '../models/representative_detail.dart';
 import '../models/rating.dart';
 import '../models/rating_statistics.dart';
 import '../services/representative_service.dart';
 import '../services/ratings_service.dart';
 import '../services/auth_storage_service.dart';
+import '../services/prefetch_service.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/rating_form_widget.dart';
 import '../widgets/ratings_display_widget.dart';
+import '../widgets/skeleton_widgets.dart';
 
 class RepresentativeDetailPage extends StatefulWidget {
   final String representativeId;
@@ -26,6 +32,7 @@ class RepresentativeDetailPage extends StatefulWidget {
 class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   final RepresentativeService _service = RepresentativeService();
   final RatingsService _ratingsService = RatingsService();
+  final PrefetchService _prefetchService = PrefetchService();
 
   RepresentativeDetail? _detail;
   bool _isLoading = true;
@@ -51,6 +58,18 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   }
 
   Future<void> _loadRepresentativeDetail() async {
+    // Check for prefetched data first
+    final prefetched = _prefetchService.getPrefetchedDetail(widget.representativeId);
+    if (prefetched != null) {
+      if (mounted) {
+        setState(() {
+          _detail = prefetched;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     final detail = await _service.getRepresentativeById(
       widget.representativeId,
     );
@@ -84,7 +103,6 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         }
       }
     } catch (e) {
-      print('Error checking auth/rating: $e');
       if (mounted) {
         setState(() => _loadingRating = false);
       }
@@ -93,6 +111,15 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
 
   Future<void> _loadRatingStatistics() async {
     try {
+      // Check for prefetched stats first
+      final prefetchedStats = _prefetchService.getPrefetchedStats(widget.representativeId);
+      if (prefetchedStats != null && prefetchedStats is RatingStatistics) {
+        if (mounted) {
+          setState(() => _ratingStats = prefetchedStats);
+        }
+        return;
+      }
+
       final stats = await _ratingsService.getRatingStatistics(
         int.parse(widget.representativeId),
       );
@@ -100,15 +127,14 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         setState(() => _ratingStats = stats);
       }
     } catch (e) {
-      print('Error loading rating statistics: $e');
     }
   }
 
   void _showRatingForm() {
     if (!_isAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please sign in to rate this representative'),
+        SnackBar(
+          content: Text(LanguageService.tr('sign_in_to_rate_rep')),
         ),
       );
       return;
@@ -130,6 +156,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           isVerified: _isVerified,
           existingRating: _userRating,
           onRatingSubmitted: () {
+            _prefetchService.invalidate(widget.representativeId);
             _checkAuthAndLoadUserRating();
             _loadRatingStatistics();
             // Force refresh the ratings display
@@ -144,12 +171,12 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.isDarkMode ? const Color(0xFF1A1A1A) : Colors.white;
+    final bgColor = widget.isDarkMode ? ThemeService.bgMain : Colors.white;
     final textColor = widget.isDarkMode
         ? Colors.white
         : const Color(0xFF222222);
     final cardColor = widget.isDarkMode
-        ? const Color(0xFF2A2A2A)
+        ? ThemeService.bgElev
         : const Color(0xFFF9F9F9);
 
     return Scaffold(
@@ -157,8 +184,9 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -167,13 +195,14 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
             color: textColor,
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: _isLoading
-            ? Center(child: CircularProgressIndicator(color: Colors.deepPurple))
+            ? RepresentativeDetailSkeleton(isDarkMode: widget.isDarkMode)
             : _detail == null
           ? Center(
               child: Column(
@@ -186,7 +215,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Failed to load details',
+                    LanguageService.tr('failed_load_details'),
                     style: TextStyle(
                       fontSize: 18,
                       color: textColor.withValues(alpha: 0.7),
@@ -215,6 +244,21 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     );
   }
 
+  String _officeTypeLabel(String officeType) {
+    switch (officeType) {
+      case 'LOK_SABHA':
+        return LanguageService.tr('mp_lok_sabha');
+      case 'RAJYA_SABHA':
+        return LanguageService.tr('mp_rajya_sabha');
+      case 'STATE_ASSEMBLY':
+        return LanguageService.tr('mla');
+      case 'VIDHAN_PARISHAD':
+        return LanguageService.tr('mlc');
+      default:
+        return officeType.replaceAll('_', ' ');
+    }
+  }
+
   Widget _buildHeader(Color textColor, Color cardColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -228,16 +272,26 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
               shape: BoxShape.circle,
               border: Border.all(color: textColor.withValues(alpha: 0.1), width: 2),
             ),
-            child: ClipOval(
-              child: _detail!.imageUrl != null
-                  ? Image.network(
-                      _detail!.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return _buildPlaceholderAvatar();
-                      },
-                    )
-                  : _buildPlaceholderAvatar(),
+            child: Hero(
+              tag: 'rep_avatar_${widget.representativeId}',
+              child: ClipOval(
+                child: _detail!.imageUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: _detail!.imageUrl!,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 280,
+                        memCacheHeight: 280,
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Container(color: Colors.white),
+                        ),
+                        errorWidget: (context, url, error) {
+                          return _buildPlaceholderAvatar();
+                        },
+                      )
+                    : _buildPlaceholderAvatar(),
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -254,7 +308,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           const SizedBox(height: 8),
           // Subtitle
           Text(
-            '${_detail!.officeType.replaceAll('_', ' ')} • ${_detail!.constituency}',
+            '${_officeTypeLabel(_detail!.officeType)} • ${_detail!.constituency}',
             style: TextStyle(fontSize: 14, color: textColor.withValues(alpha: 0.6)),
             textAlign: TextAlign.center,
           ),
@@ -278,23 +332,23 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         children: [
           _buildStatItem(
             _detail!.assets != null ? _formatCurrency(_detail!.assets!) : 'N/A',
-            'Total Assets',
+            LanguageService.tr('total_assets'),
             textColor,
           ),
           Container(width: 1, height: 40, color: textColor.withValues(alpha: 0.1)),
           _buildStatItem(
             _ratingStats != null && _ratingStats!.overallStars > 0
                 ? '${_ratingStats!.overallStars.toStringAsFixed(1)}★'
-                : 'No ratings',
+                : LanguageService.tr('no_ratings_short'),
             _ratingStats != null && _ratingStats!.totalRatings > 0
-                ? 'Rating (${_ratingStats!.totalRatings})'
-                : 'Public Rating',
+                ? '${LanguageService.tr('rating')} (${_ratingStats!.totalRatings})'
+                : LanguageService.tr('public_rating'),
             textColor,
           ),
           Container(width: 1, height: 40, color: textColor.withValues(alpha: 0.1)),
           _buildStatItem(
             _detail!.totalCases.toString(),
-            _detail!.totalCases == 1 ? 'Case' : 'Cases',
+            _detail!.totalCases == 1 ? LanguageService.tr('case_singular') : LanguageService.tr('cases_plural'),
             textColor,
           ),
         ],
@@ -341,7 +395,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Has Criminal Cases',
+                  LanguageService.tr('has_criminal_cases'),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -350,7 +404,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${_detail!.totalCases} criminal case${_detail!.totalCases > 1 ? 's' : ''} on record',
+                  '${_detail!.totalCases} ${LanguageService.tr('criminal_cases_record')}',
                   style: TextStyle(
                     fontSize: 13,
                     color: textColor.withValues(alpha: 0.6),
@@ -372,7 +426,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Details',
+            LanguageService.tr('details'),
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -383,8 +437,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           // Position
           _buildSectionItem(
             Icons.location_city_outlined,
-            'Current Position',
-            '${_detail!.officeType.replaceAll('_', ' ')}\n${_detail!.state} • ${_detail!.party}',
+            LanguageService.tr('current_position'),
+            '${LanguageService.translitName(_detail!.officeType.replaceAll('_', ' '))}\n${LanguageService.translitName(_detail!.state)} • ${LanguageService.translitName(_detail!.party)}',
             textColor,
           ),
           const SizedBox(height: 20),
@@ -392,7 +446,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           if (_detail!.education != null)
             _buildSectionItem(
               Icons.school_outlined,
-              'Education',
+              LanguageService.tr('education_label'),
               _detail!.education!,
               textColor,
             ),
@@ -401,7 +455,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           if (_detail!.assets != null || _detail!.liabilities != null)
             _buildSectionItem(
               Icons.account_balance_wallet_outlined,
-              'Financial Details',
+              LanguageService.tr('financial_details'),
               _buildFinancialText(),
               textColor,
             ),
@@ -411,10 +465,10 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           if (_detail!.selfProfession != null)
             _buildSectionItem(
               Icons.work_outline,
-              'Profession',
+              LanguageService.tr('profession'),
               _detail!.selfProfession! +
                   (_detail!.spouseProfession != null
-                      ? '\nSpouse: ${_detail!.spouseProfession}'
+                      ? '\n${LanguageService.tr('spouse_label')}: ${_detail!.spouseProfession!}'
                       : ''),
               textColor,
             ),
@@ -423,7 +477,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           if (_detail!.selfItr != null || _detail!.spouseItr != null)
             _buildSectionItem(
               Icons.receipt_long_outlined,
-              'Income Tax Returns',
+              LanguageService.tr('income_tax_returns'),
               _buildITRText(),
               textColor,
             ),
@@ -487,13 +541,13 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   String _buildFinancialText() {
     List<String> parts = [];
     if (_detail!.assets != null) {
-      parts.add('Assets: ${_formatCurrency(_detail!.assets!)}');
+      parts.add('${LanguageService.tr('assets_label')}: ${_formatCurrency(_detail!.assets!)}');
     }
     if (_detail!.liabilities != null) {
-      parts.add('Liabilities: ${_formatCurrency(_detail!.liabilities!)}');
+      parts.add('${LanguageService.tr('liabilities_label')}: ${_formatCurrency(_detail!.liabilities!)}');
     }
     if (_detail!.netWorth != null) {
-      parts.add('Net Worth: ${_formatCurrency(_detail!.netWorth!)}');
+      parts.add('${LanguageService.tr('net_worth_label')}: ${_formatCurrency(_detail!.netWorth!)}');
     }
     return parts.join('\n');
   }
@@ -501,14 +555,14 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   String _buildITRText() {
     List<String> parts = [];
     if (_detail!.selfItr != null && _detail!.selfItr!.isNotEmpty) {
-      parts.add('Self ITR:');
+      parts.add('${LanguageService.tr('self_itr')}:');
       _detail!.selfItr!.forEach((year, amount) {
         parts.add('  $year: ${_formatCurrency(amount)}');
       });
     }
     if (_detail!.spouseItr != null && _detail!.spouseItr!.isNotEmpty) {
       if (parts.isNotEmpty) parts.add('');
-      parts.add('Spouse ITR:');
+      parts.add('${LanguageService.tr('spouse_itr')}:');
       _detail!.spouseItr!.forEach((year, amount) {
         parts.add('  $year: ${_formatCurrency(amount)}');
       });
@@ -541,7 +595,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                   Row(
                     children: [
                       Text(
-                        'Criminal Cases',
+                        LanguageService.tr('criminal_cases'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -679,8 +733,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                     children: [
                       Text(
                         _userRating != null
-                            ? 'Your Rating'
-                            : 'Rate This Representative',
+                            ? LanguageService.tr('your_rating')
+                            : LanguageService.tr('rate_this_rep'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -713,8 +767,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                       else
                         Text(
                           _isAuthenticated
-                              ? 'Share your experience'
-                              : 'Sign in to rate',
+                              ? LanguageService.tr('share_experience')
+                              : LanguageService.tr('sign_in_to_rate_short'),
                           style: TextStyle(
                             fontSize: 12,
                             color: textColor.withValues(alpha: 0.6),
@@ -743,7 +797,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'Public Ratings',
+            LanguageService.tr('public_ratings'),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,

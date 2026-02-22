@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import '../services/aadhar_qr_parser.dart';
 import '../services/aadhaar_verification_service.dart';
+import '../services/language_service.dart';
 import 'aadhar_result_page.dart';
 import 'main_screen.dart';
 
@@ -58,12 +59,11 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
 
       await _processImage(photo.path);
     } catch (e) {
-      debugPrint('Camera error: $e');
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Camera error: $e'),
+            content: Text('${LanguageService.tr('camera_error')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -90,12 +90,11 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
 
       await _processImage(image.path);
     } catch (e) {
-      debugPrint('Gallery error: $e');
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gallery error: $e'),
+            content: Text('${LanguageService.tr('gallery_error')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -113,9 +112,9 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
         if (mounted) {
           setState(() => _isProcessing = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'No QR code found in image. Try again with better lighting and focus.',
+                LanguageService.tr('no_qr_found'),
               ),
               backgroundColor: Colors.orange,
             ),
@@ -132,8 +131,8 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
         if (mounted) {
           setState(() => _isProcessing = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not read QR code data'),
+            SnackBar(
+              content: Text(LanguageService.tr('cannot_read_qr')),
               backgroundColor: Colors.red,
             ),
           );
@@ -141,23 +140,18 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
         return;
       }
 
-      debugPrint('QR Detected! Length: ${rawValue.length}');
-
       // Hash the raw QR data and send to backend for verification
-      debugPrint('Hashing Aadhaar data...');
       final verificationResult =
           await AadhaarVerificationService.processAadhaarQR(rawValue);
 
       if (verificationResult['success'] == true) {
-        debugPrint('âœ… Aadhaar hash verified with backend');
       } else {
-        debugPrint('âš ï¸ Backend verification: ${verificationResult['error']}');
         // Show warning but continue to show user details
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                verificationResult['error'] ?? 'Verification warning',
+                verificationResult['error'] ?? LanguageService.tr('verification_warning'),
               ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 4),
@@ -168,7 +162,6 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
 
       // Parse the QR code (existing functionality - still show user details)
       final result = await _parser.parseQRCode(rawValue);
-      debugPrint('Parsed: ${result.name}, Secure: ${result.isSecure}');
 
       if (!mounted) return;
 
@@ -187,11 +180,10 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
         ),
       );
     } catch (e) {
-      debugPrint('Process error: $e');
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${LanguageService.tr('error_prefix')}: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -218,19 +210,24 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text('Aadhar Verification'),
+        title: Text(
+          LanguageService.tr('verification'),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+        ),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: const BackButton(),
         actions: [
-          TextButton.icon(
+          TextButton(
             onPressed: _skipVerification,
-            icon: const Icon(Icons.skip_next, color: Colors.white),
-            label: const Text(
-              'Skip',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+            child: Text(
+              LanguageService.tr('skip'),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
               ),
             ),
           ),
@@ -238,15 +235,15 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
       ),
       body: SafeArea(
         child: _isProcessing
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 16),
+                    const CircularProgressIndicator(color: Colors.white),
+                    const SizedBox(height: 16),
                     Text(
-                      'Processing QR Code...',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      LanguageService.tr('processing_qr'),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ],
                 ),
@@ -273,9 +270,9 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
 
                     const SizedBox(height: 24),
 
-                    const Text(
-                      'Scan Aadhar QR Code',
-                      style: TextStyle(
+                    Text(
+                      LanguageService.tr('scan_aadhar_qr'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -285,7 +282,7 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
                     const SizedBox(height: 8),
 
                     Text(
-                      'Take a photo or select from gallery',
+                      LanguageService.tr('photo_or_gallery'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
@@ -302,7 +299,7 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
                       child: ElevatedButton.icon(
                         onPressed: _scanFromCamera,
                         icon: const Icon(Icons.camera_alt, size: 24),
-                        label: const Text('Take Photo'),
+                        label: Text(LanguageService.tr('take_photo')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6C63FF),
                           foregroundColor: Colors.white,
@@ -326,7 +323,7 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
                       child: OutlinedButton.icon(
                         onPressed: _scanFromGallery,
                         icon: const Icon(Icons.photo_library, size: 24),
-                        label: const Text('Choose from Gallery'),
+                        label: Text(LanguageService.tr('choose_gallery')),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: const BorderSide(
@@ -350,15 +347,15 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
                     _buildInfoCard(
                       Icons.check_circle,
                       Colors.green,
-                      'Secure',
-                      'Dense numeric QR from official PVC Aadhar',
+                      LanguageService.tr('secure'),
+                      LanguageService.tr('secure_desc'),
                     ),
                     const SizedBox(height: 8),
                     _buildInfoCard(
                       Icons.warning,
                       Colors.orange,
-                      'Unsecure',
-                      'Text QR from DigiLocker or shop print',
+                      LanguageService.tr('unsecure'),
+                      LanguageService.tr('unsecure_desc'),
                     ),
 
                     const SizedBox(height: 24),
@@ -381,7 +378,7 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Tip: Ensure good lighting and hold camera steady for best results',
+                              LanguageService.tr('camera_tip'),
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.8),
                                 fontSize: 12,
@@ -398,7 +395,7 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
                     TextButton(
                       onPressed: _skipVerification,
                       child: Text(
-                        'Skip verification and continue as guest',
+                        LanguageService.tr('skip_continue_guest'),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 14,

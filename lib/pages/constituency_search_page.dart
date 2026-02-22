@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/constituency.dart';
 import '../services/constituency_service.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 
 class ConstituencySearchPage extends StatefulWidget {
   final bool isDarkMode;
@@ -60,13 +62,13 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
       _hasSearched = true;
     });
 
-    _debounceTimer = Timer(const Duration(milliseconds: 800), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
       _performSearch(value);
     });
   }
 
   Future<void> _performSearch(String query) async {
-    final result = await _constituencyService.searchConstituencies(query);
+    final result = await _constituencyService.searchConstituencies(LanguageService.translitToLatin(query));
 
     if (mounted) {
       setState(() {
@@ -94,7 +96,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
         _selectedConstituency = result['constituency'] as Constituency?;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Constituency set to ${constituency.name}'),
+            content: Text('${LanguageService.tr('constituency_set_to')} ${LanguageService.translitName(constituency.name)}'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -104,7 +106,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Failed to set constituency'),
+            content: Text(LanguageService.tr('failed_set_constituency')),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -116,30 +118,32 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
   @override
   Widget build(BuildContext context) {
     final bgColor = widget.isDarkMode
-        ? const Color(0xFF1A1A1A)
+        ? ThemeService.bgMain
         : const Color(0xFFF9F9F9);
     final textColor = widget.isDarkMode
         ? Colors.white
         : const Color(0xFF222222);
     final cardColor = widget.isDarkMode
-        ? const Color(0xFF2A2A2A)
+        ? ThemeService.bgElev
         : Colors.white;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: cardColor,
+        backgroundColor: bgColor,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Select Constituency',
+          LanguageService.tr('constituency'),
           style: TextStyle(
             color: textColor,
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
@@ -154,7 +158,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
               focusNode: _searchFocusNode,
               style: TextStyle(color: textColor),
               decoration: InputDecoration(
-                hintText: 'Search for your constituency...',
+                hintText: LanguageService.tr('search_constituency_hint'),
                 hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
                 prefixIcon: Icon(
                   Icons.search,
@@ -177,7 +181,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                     : null,
                 filled: true,
                 fillColor: widget.isDarkMode
-                    ? const Color(0xFF3A3A3A)
+                    ? ThemeService.bgBorder
                     : const Color(0xFFF5F5F5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -189,7 +193,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.deepPurple, width: 2),
+                  borderSide: BorderSide(color: ThemeService.accent, width: 2),
                 ),
               ),
               onChanged: _onSearchChanged,
@@ -202,20 +206,20 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.withValues(alpha: 0.1),
+                color: ThemeService.accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.3)),
+                border: Border.all(color: ThemeService.accent.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.deepPurple, size: 24),
+                  Icon(Icons.check_circle, color: ThemeService.accent, size: 24),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Current Constituency',
+                          LanguageService.tr('current_constituency'),
                           style: TextStyle(
                             fontSize: 12,
                             color: textColor.withValues(alpha: 0.6),
@@ -224,7 +228,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _selectedConstituency!.name,
+                          LanguageService.translitName(_selectedConstituency!.name),
                           style: TextStyle(
                             fontSize: 16,
                             color: textColor,
@@ -232,7 +236,11 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                           ),
                         ),
                         Text(
-                          _selectedConstituency!.displayType,
+                          _selectedConstituency!.type == 'lok_sabha_constituency'
+                              ? LanguageService.tr('lok_sabha')
+                              : _selectedConstituency!.type == 'vidhan_sabha_constituency'
+                                  ? LanguageService.tr('vidhan_sabha')
+                                  : LanguageService.translitName(_selectedConstituency!.displayType),
                           style: TextStyle(
                             fontSize: 13,
                             color: textColor.withValues(alpha: 0.7),
@@ -249,7 +257,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
           Expanded(
             child: _isSearching
                 ? Center(
-                    child: CircularProgressIndicator(color: Colors.deepPurple),
+                    child: CircularProgressIndicator(color: ThemeService.accent),
                   )
                 : !_hasSearched
                 ? Center(
@@ -263,7 +271,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Search for your constituency',
+                          LanguageService.tr('search_constituency'),
                           style: TextStyle(
                             fontSize: 16,
                             color: textColor.withValues(alpha: 0.5),
@@ -284,7 +292,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No constituencies found',
+                          LanguageService.tr('no_constituencies'),
                           style: TextStyle(
                             fontSize: 16,
                             color: textColor.withValues(alpha: 0.5),
@@ -310,12 +318,12 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.deepPurple.withValues(alpha: 0.1)
+                                ? ThemeService.accent.withValues(alpha: 0.1)
                                 : cardColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
-                                  ? Colors.deepPurple
+                                  ? ThemeService.accent
                                   : textColor.withValues(alpha: 0.1),
                               width: isSelected ? 2 : 1,
                             ),
@@ -333,15 +341,15 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.deepPurple
-                                      : Colors.deepPurple.withValues(alpha: 0.1),
+                                      ? ThemeService.accent
+                                      : ThemeService.accent.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
                                   Icons.location_on,
                                   color: isSelected
                                       ? Colors.white
-                                      : Colors.deepPurple,
+                                      : ThemeService.accent,
                                   size: 24,
                                 ),
                               ),
@@ -351,7 +359,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      constituency.name,
+                                      LanguageService.translitName(constituency.name),
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -360,7 +368,11 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      constituency.displayType,
+                                      constituency.type == 'lok_sabha_constituency'
+                                          ? LanguageService.tr('lok_sabha')
+                                          : constituency.type == 'vidhan_sabha_constituency'
+                                              ? LanguageService.tr('vidhan_sabha')
+                                              : LanguageService.translitName(constituency.displayType),
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: textColor.withValues(alpha: 0.6),
@@ -372,7 +384,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                               if (isSelected)
                                 Icon(
                                   Icons.check_circle,
-                                  color: Colors.deepPurple,
+                                  color: ThemeService.accent,
                                   size: 24,
                                 ),
                             ],

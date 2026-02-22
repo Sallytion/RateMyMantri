@@ -65,14 +65,14 @@ class RepresentativeDetail {
 
   factory RepresentativeDetail.fromJson(Map<String, dynamic> json) {
     // Helper to parse int from string or int
-    int _parseInt(dynamic value, int defaultValue) {
+    int parseInt(dynamic value, int defaultValue) {
       if (value == null) return defaultValue;
       if (value is int) return value;
       if (value is String) return int.tryParse(value) ?? defaultValue;
       return defaultValue;
     }
 
-    int? _parseNullableInt(dynamic value) {
+    int? parseNullableInt(dynamic value) {
       if (value == null) return null;
       if (value is int) return value;
       if (value is String) return int.tryParse(value);
@@ -80,12 +80,12 @@ class RepresentativeDetail {
     }
 
     // Parse ITR data (year -> amount)
-    Map<String, int>? _parseItr(dynamic itrData) {
+    Map<String, int>? parseItr(dynamic itrData) {
       if (itrData == null) return null;
       if (itrData is! Map) return null;
       final Map<String, int> result = {};
       itrData.forEach((key, value) {
-        final amount = _parseNullableInt(value);
+        final amount = parseNullableInt(value);
         if (amount != null) {
           result[key.toString()] = amount;
         }
@@ -94,7 +94,7 @@ class RepresentativeDetail {
     }
 
     // Parse case arrays
-    List<String>? _parseCases(dynamic casesData) {
+    List<String>? parseCases(dynamic casesData) {
       if (casesData == null) return null;
       if (casesData is! List) return null;
       final List<String> result = casesData
@@ -104,12 +104,12 @@ class RepresentativeDetail {
       return result.isEmpty ? null : result;
     }
 
-    final ipcCases = _parseCases(json['ipc_cases']);
-    final bnsCases = _parseCases(json['bns_cases']);
+    final ipcCases = parseCases(json['ipc_cases']);
+    final bnsCases = parseCases(json['bns_cases']);
 
     return RepresentativeDetail(
-      id: _parseInt(json['id'], 0),
-      candidateId: _parseInt(json['candidate_id'], 0),
+      id: parseInt(json['id'], 0),
+      candidateId: parseInt(json['candidate_id'], 0),
       name: json['name']?.toString() ?? '',
       officeType: json['office_type']?.toString() ?? '',
       state: json['state']?.toString() ?? '',
@@ -119,20 +119,20 @@ class RepresentativeDetail {
       selfProfession: json['self_profession']?.toString(),
       spouseProfession: json['spouse_profession']?.toString(),
       imageUrl: json['image_url']?.toString(),
-      assets: _parseNullableInt(json['assets']),
-      liabilities: _parseNullableInt(json['liabilities']),
+      assets: parseNullableInt(json['assets']),
+      liabilities: parseNullableInt(json['liabilities']),
       education: json['education']?.toString(),
-      selfItr: _parseItr(json['self_itr']),
-      spouseItr: _parseItr(json['spouse_itr']),
+      selfItr: parseItr(json['self_itr']),
+      spouseItr: parseItr(json['spouse_itr']),
       ipcCases: ipcCases,
       bnsCases: bnsCases,
       // Calculate counts from arrays if not provided
-      totalCases: _parseInt(
+      totalCases: parseInt(
         json['total_cases'],
         (ipcCases?.length ?? 0) + (bnsCases?.length ?? 0),
       ),
-      ipcCasesCount: _parseInt(json['ipc_cases_count'], ipcCases?.length ?? 0),
-      bnsCasesCount: _parseInt(json['bns_cases_count'], bnsCases?.length ?? 0),
+      ipcCasesCount: parseInt(json['ipc_cases_count'], ipcCases?.length ?? 0),
+      bnsCasesCount: parseInt(json['bns_cases_count'], bnsCases?.length ?? 0),
     );
   }
 }

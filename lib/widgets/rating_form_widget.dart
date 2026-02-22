@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/rating.dart';
+import '../services/language_service.dart';
 import '../services/ratings_service.dart';
+import '../services/theme_service.dart';
 
 class RatingFormWidget extends StatefulWidget {
   final int representativeId;
@@ -63,7 +65,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
     // Validation
     if (_question1Stars == 0 || _question2Stars == 0 || _question3Stars == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please rate all three questions')),
+        SnackBar(content: Text(LanguageService.tr('rate_all_questions'))),
       );
       return;
     }
@@ -86,7 +88,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rating updated successfully!')),
+            SnackBar(content: Text(LanguageService.tr('rating_updated'))),
           );
           // Call callback and close
           widget.onRatingSubmitted?.call();
@@ -107,7 +109,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rating submitted successfully!')),
+            SnackBar(content: Text(LanguageService.tr('rating_submitted'))),
           );
           // Call callback and close
           widget.onRatingSubmitted?.call();
@@ -115,10 +117,9 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
         }
       }
     } catch (e) {
-      print('Error in _submitRating: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit rating: ${e.toString()}')),
+          SnackBar(content: Text('${LanguageService.tr('failed_submit_rating')}: ${e.toString()}')),
         );
         // Still close the modal after a delay so user isn't stuck
         Future.delayed(const Duration(seconds: 2), () {
@@ -172,8 +173,8 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
         Center(
           child: Text(
             currentStars == 0
-                ? 'Tap to rate'
-                : '$currentStars ${currentStars == 1 ? 'star' : 'stars'}',
+                ? LanguageService.tr('tap_to_rate')
+                : '$currentStars ${currentStars == 1 ? LanguageService.tr('star_singular') : LanguageService.tr('stars_plural')}',
             style: TextStyle(
               fontSize: 12,
               color: widget.isDarkMode
@@ -190,7 +191,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+        color: widget.isDarkMode ? ThemeService.bgMain : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
@@ -211,8 +212,8 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                       children: [
                         Text(
                           widget.existingRating != null
-                              ? 'Edit Rating'
-                              : 'Rate Representative',
+                              ? LanguageService.tr('edit_rating')
+                              : LanguageService.tr('rate_representative'),
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -292,7 +293,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
               // Review Text (Optional)
               Text(
-                'Review (Optional)',
+                LanguageService.tr('review_optional'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -312,7 +313,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                       : const Color(0xFF222222),
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Share your thoughts about this representative...',
+                  hintText: LanguageService.tr('review_hint'),
                   hintStyle: TextStyle(
                     color: widget.isDarkMode
                         ? Colors.white38
@@ -320,7 +321,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                   ),
                   filled: true,
                   fillColor: widget.isDarkMode
-                      ? const Color(0xFF2A2A2A)
+                      ? ThemeService.bgElev
                       : const Color(0xFFF5F5F5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -338,7 +339,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: widget.isDarkMode
-                        ? const Color(0xFF2A2A2A)
+                        ? ThemeService.bgElev
                         : const Color(0xFFF5F5F5),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -356,7 +357,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Post Anonymously',
+                              LanguageService.tr('post_anonymously'),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -367,7 +368,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Your name won\'t be visible',
+                              LanguageService.tr('name_not_visible'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: widget.isDarkMode
@@ -408,7 +409,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Verify with Aadhaar to post verified ratings and remain anonymous',
+                          LanguageService.tr('verify_aadhaar_notice'),
                           style: TextStyle(
                             fontSize: 12,
                             color: widget.isDarkMode
@@ -449,8 +450,8 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                         )
                       : Text(
                           widget.existingRating != null
-                              ? 'Update Rating'
-                              : 'Submit Rating',
+                              ? LanguageService.tr('update_rating')
+                              : LanguageService.tr('submit_rating'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

@@ -80,8 +80,6 @@ class Rating {
         party: json['party'] as String?,
       );
     } catch (e) {
-      print('Error parsing Rating from JSON: $e');
-      print('JSON data: $json');
       rethrow;
     }
   }

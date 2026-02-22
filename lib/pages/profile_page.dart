@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,11 +9,18 @@ import 'rate_page.dart';
 import 'saved_articles_page.dart';
 import '../services/auth_storage_service.dart';
 import '../services/constituency_service.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 import '../models/constituency.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isDarkMode;
   final Function(bool) onDarkModeToggle;
+  final DarkModeOption darkModeOption;
+  final int accentColorIndex;
+  final Function(DarkModeOption) onDarkModeOptionChanged;
+  final Function(int) onAccentColorChanged;
+  final Function(String)? onLanguageChanged;
   final String userName;
   final bool isVerified;
   final String? userEmail;
@@ -23,6 +31,11 @@ class ProfilePage extends StatefulWidget {
     super.key,
     required this.isDarkMode,
     required this.onDarkModeToggle,
+    required this.darkModeOption,
+    required this.accentColorIndex,
+    required this.onDarkModeOptionChanged,
+    required this.onAccentColorChanged,
+    this.onLanguageChanged,
     required this.userName,
     required this.isVerified,
     this.userEmail,
@@ -40,15 +53,15 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoadingConstituency = true;
 
   Color get _backgroundColor =>
-      widget.isDarkMode ? const Color(0xFF1A1A1A) : Colors.white;
+      widget.isDarkMode ? ThemeService.bgMain : Colors.white;
   Color get _primaryText =>
       widget.isDarkMode ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
   Color get _secondaryText =>
       widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
   Color get _cardBackground =>
-      widget.isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF7F7F7);
+      widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFF7F7F7);
   Color get _dividerColor =>
-      widget.isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
+      widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFEEEEEE);
 
   @override
   void initState() {
@@ -84,6 +97,42 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  void _showCustomizationSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _CustomizationSheet(
+        isDarkMode: widget.isDarkMode,
+        darkModeOption: widget.darkModeOption,
+        accentColorIndex: widget.accentColorIndex,
+        onDarkModeOptionChanged: widget.onDarkModeOptionChanged,
+        onAccentColorChanged: widget.onAccentColorChanged,
+        cardBackground: _cardBackground,
+        primaryText: _primaryText,
+        secondaryText: _secondaryText,
+      ),
+    );
+  }
+
+  void _showLanguageSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _LanguageSheet(
+        isDarkMode: widget.isDarkMode,
+        cardBackground: _cardBackground,
+        primaryText: _primaryText,
+        secondaryText: _secondaryText,
+        onLanguageChanged: (code) {
+          widget.onLanguageChanged?.call(code);
+          setState(() {});
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,43 +140,69 @@ class _ProfilePageState extends State<ProfilePage> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Title
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Text(
+                  LanguageService.tr('profile'),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
               // Header - Identity & Tenure
               Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
+                child: Center(
+                  child: Column(
+                    children: [
                     Stack(
                       children: [
                         Container(
                           width: 100,
                           height: 100,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFFFF385C).withValues(alpha: 0.1),
-                            image: widget.photoUrl != null
-                                ? DecorationImage(
-                                    image: NetworkImage(widget.photoUrl!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
                           ),
-                          child: widget.photoUrl == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: Color(0xFFFF385C),
-                                )
-                              : null,
+                          child: ClipOval(
+                            child: widget.photoUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: widget.photoUrl!,
+                                    fit: BoxFit.cover,
+                                    width: 100,
+                                    height: 100,
+                                    errorWidget: (_, _, _) => Container(
+                                      color: ThemeService.accent.withValues(alpha: 0.1),
+                                      child: Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: ThemeService.accent,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    color: ThemeService.accent.withValues(alpha: 0.1),
+                                    child: Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: ThemeService.accent,
+                                    ),
+                                  ),
+                          ),
                         ),
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFFFF385C),
+                              color: ThemeService.accent,
                             ),
                             child: const Icon(
                               Icons.camera_alt,
@@ -140,7 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      widget.userName,
+                      LanguageService.translitName(widget.userName),
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w600,
@@ -180,8 +255,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           const SizedBox(width: 6),
                           Text(
                             widget.isVerified
-                                ? 'Verified User'
-                                : 'Unverified User',
+                                ? LanguageService.tr('verified_user')
+                                : LanguageService.tr('unverified_user'),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -193,21 +268,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Member since August 2023',
-                      style: TextStyle(fontSize: 14, color: _secondaryText),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.edit, size: 16),
-                      label: const Text('Edit Profile'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: _primaryText,
-                      ),
-                    ),
                   ],
+                  ),
                 ),
               ),
 
@@ -220,7 +282,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'My Activity',
+                      LanguageService.tr('my_activity'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -231,8 +293,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildListItem(
                       icon: Icons.star,
                       iconColor: const Color(0xFFFFC107),
-                      title: 'My Ratings & Reviews',
-                      subtitle: '24 Ratings',
+                      title: LanguageService.tr('my_ratings_reviews'),
+                      subtitle: LanguageService.tr('ratings_count'),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -261,7 +323,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'My Location',
+                      LanguageService.tr('my_location'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -271,11 +333,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildListItem(
                       icon: Icons.location_on,
-                      iconColor: const Color(0xFFFF385C),
-                      title: 'Constituency',
+                      iconColor: ThemeService.accent,
+                      title: LanguageService.tr('constituency_label'),
                       subtitle: _isLoadingConstituency
-                          ? 'Loading...'
-                          : (_currentConstituency?.name ?? 'Not Set'),
+                          ? LanguageService.tr('loading')
+                          : LanguageService.translitName(_currentConstituency?.name ?? LanguageService.tr('not_set')),
                       onTap: _navigateToConstituencySearch,
                       showArrow: true,
                     ),
@@ -294,7 +356,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Settings & Support',
+                      LanguageService.tr('settings_support'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -307,8 +369,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildListItem(
                         icon: Icons.verified_user,
                         iconColor: Colors.green,
-                        title: 'Verify Account',
-                        subtitle: 'Scan Aadhar QR to enable anonymous mode',
+                        title: LanguageService.tr('verify_account'),
+                        subtitle: LanguageService.tr('verify_subtitle'),
                         onTap: () {
                           Navigator.push(
                             context,
@@ -327,31 +389,28 @@ class _ProfilePageState extends State<ProfilePage> {
                       Divider(height: 1, indent: 56, color: _dividerColor),
                     ],
                     _buildListItem(
-                      icon: widget.isDarkMode
-                          ? Icons.dark_mode
-                          : Icons.light_mode,
-                      iconColor: widget.isDarkMode
-                          ? const Color(0xFFFFA726)
-                          : const Color(0xFFFFC107),
-                      title: 'Dark Mode',
-                      subtitle: widget.isDarkMode ? 'Enabled' : 'Disabled',
-                      onTap: () {
-                        widget.onDarkModeToggle(!widget.isDarkMode);
-                      },
-                      trailing: Switch(
-                        value: widget.isDarkMode,
-                        onChanged: (value) {
-                          widget.onDarkModeToggle(value);
-                        },
-                        activeTrackColor: const Color(0xFFFF385C),
-                      ),
+                      icon: Icons.palette_outlined,
+                      iconColor: ThemeService.accentColors[widget.accentColorIndex],
+                      title: LanguageService.tr('customization'),
+                      subtitle: LanguageService.tr('theme_accent_dark'),
+                      onTap: _showCustomizationSheet,
+                      showArrow: true,
+                    ),
+                    Divider(height: 1, indent: 56, color: _dividerColor),
+                    _buildListItem(
+                      icon: Icons.language,
+                      iconColor: const Color(0xFF9C27B0),
+                      title: LanguageService.tr('language'),
+                      subtitle: LanguageService.currentLanguageName,
+                      onTap: _showLanguageSheet,
+                      showArrow: true,
                     ),
                     Divider(height: 1, indent: 56, color: _dividerColor),
                     _buildListItem(
                       icon: Icons.bookmark_outline,
                       iconColor: const Color(0xFF00BCD4),
-                      title: 'Saved Articles',
-                      subtitle: 'View your bookmarked news',
+                      title: LanguageService.tr('saved_articles'),
+                      subtitle: LanguageService.tr('view_bookmarks'),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -368,8 +427,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildListItem(
                       icon: Icons.support_agent,
                       iconColor: const Color(0xFF4CAF50),
-                      title: 'Support',
-                      subtitle: 'Contact developer team',
+                      title: LanguageService.tr('support'),
+                      subtitle: LanguageService.tr('contact_dev'),
                       onTap: () {
                         showDialog(
                           context: context,
@@ -417,7 +476,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Contact Support',
+                                                LanguageService.tr('contact_support'),
                                                 style: TextStyle(
                                                   color: _primaryText,
                                                   fontSize: 22,
@@ -427,7 +486,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               ),
                                               const SizedBox(height: 2),
                                               Text(
-                                                'We\'re here to help',
+                                                LanguageService.tr('we_help'),
                                                 style: TextStyle(
                                                   color: _secondaryText,
                                                   fontSize: 13,
@@ -445,12 +504,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
                                         color: widget.isDarkMode
-                                            ? const Color(0xFF2A2A2A)
+                                            ? ThemeService.bgElev
                                             : const Color(0xFFF0F0F0),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
                                           color: widget.isDarkMode
-                                              ? const Color(0xFF3A3A3A)
+                                              ? ThemeService.bgBorder
                                               : const Color(0xFFE0E0E0),
                                           width: 1,
                                         ),
@@ -475,7 +534,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  'Email us at',
+                                                  LanguageService.tr('email_us_at'),
                                                   style: TextStyle(
                                                     color: _secondaryText,
                                                     fontSize: 11,
@@ -508,14 +567,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                             style: TextButton.styleFrom(
                                               padding: const EdgeInsets.symmetric(vertical: 14),
                                               backgroundColor: widget.isDarkMode
-                                                  ? const Color(0xFF2A2A2A)
+                                                  ? ThemeService.bgElev
                                                   : const Color(0xFFF0F0F0),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(12),
                                               ),
                                             ),
                                             child: Text(
-                                              'Close',
+                                              LanguageService.tr('close'),
                                               style: TextStyle(
                                                 color: _secondaryText,
                                                 fontSize: 15,
@@ -528,6 +587,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                         Expanded(
                                           child: ElevatedButton(
                                             onPressed: () async {
+                                              final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                              final isDark = widget.isDarkMode;
                                               Navigator.pop(context);
                                               final Uri emailUri = Uri(
                                                 scheme: 'mailto',
@@ -542,11 +603,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 );
                                               } catch (e) {
                                                 if (mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                  scaffoldMessenger.showSnackBar(
                                                     SnackBar(
-                                                      content: const Text('Please email us at: sallytionmakes@gmail.com'),
-                                                      backgroundColor: widget.isDarkMode
-                                                          ? const Color(0xFF2A2A2A)
+                                                      content: Text('${LanguageService.tr('please_email_at')}: sallytionmakes@gmail.com'),
+                                                      backgroundColor: isDark
+                                                          ? ThemeService.bgElev
                                                           : const Color(0xFF323232),
                                                       duration: const Duration(seconds: 4),
                                                     ),
@@ -564,8 +625,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 borderRadius: BorderRadius.circular(12),
                                               ),
                                             ),
-                                            child: const Text(
-                                              'Send Email',
+                                            child: Text(
+                                              LanguageService.tr('send_email'),
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w700,
@@ -589,9 +650,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildListItem(
                       icon: Icons.privacy_tip_outlined,
                       iconColor: const Color(0xFF795548),
-                      title: 'Legal & Privacy Policy',
-                      subtitle: 'Terms and data protection',
-                      onTap: () {},
+                      title: LanguageService.tr('legal_privacy'),
+                      subtitle: LanguageService.tr('terms_data'),
+                      onTap: () async {
+                        final uri = Uri.parse('https://ratemymantri.sallytion.qzz.io/privacypolicy');
+                        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(LanguageService.tr('could_not_open_privacy'))),
+                            );
+                          }
+                        }
+                      },
                       showArrow: true,
                     ),
                   ],
@@ -608,6 +678,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 52,
                   child: OutlinedButton(
                     onPressed: () async {
+                      final navigator = Navigator.of(context);
                       // Show confirmation dialog
                       final shouldLogout = await showDialog<bool>(
                         context: context,
@@ -640,12 +711,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFFF385C).withValues(alpha: 0.15),
+                                          color: ThemeService.accent.withValues(alpha: 0.15),
                                           borderRadius: BorderRadius.circular(16),
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.logout_rounded,
-                                          color: Color(0xFFFF385C),
+                                          color: ThemeService.accent,
                                           size: 28,
                                         ),
                                       ),
@@ -655,7 +726,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Log Out',
+                                              LanguageService.tr('log_out'),
                                               style: TextStyle(
                                                 color: _primaryText,
                                                 fontSize: 22,
@@ -665,7 +736,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              'Come back soon!',
+                                              LanguageService.tr('come_back_soon'),
                                               style: TextStyle(
                                                 color: _secondaryText,
                                                 fontSize: 13,
@@ -679,7 +750,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                   const SizedBox(height: 20),
                                   Text(
-                                    'Are you sure you want to log out of your account?',
+                                    LanguageService.tr('log_out_confirm'),
                                     style: TextStyle(
                                       color: _secondaryText,
                                       fontSize: 15,
@@ -696,14 +767,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                           style: TextButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(vertical: 14),
                                             backgroundColor: widget.isDarkMode
-                                                ? const Color(0xFF2A2A2A)
+                                                ? ThemeService.bgElev
                                                 : const Color(0xFFF0F0F0),
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(12),
                                             ),
                                           ),
                                           child: Text(
-                                            'Cancel',
+                                            LanguageService.tr('cancel'),
                                             style: TextStyle(
                                               color: _primaryText,
                                               fontSize: 15,
@@ -718,7 +789,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           onPressed: () => Navigator.pop(context, true),
                                           style: ElevatedButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(vertical: 14),
-                                            backgroundColor: const Color(0xFFFF385C),
+                                            backgroundColor: ThemeService.accent,
                                             foregroundColor: Colors.white,
                                             elevation: 0,
                                             shadowColor: Colors.transparent,
@@ -726,8 +797,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                               borderRadius: BorderRadius.circular(12),
                                             ),
                                           ),
-                                          child: const Text(
-                                            'Log Out',
+                                          child: Text(
+                                            LanguageService.tr('log_out'),
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w700,
@@ -748,7 +819,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       if (shouldLogout == true && mounted) {
                         // Show loading indicator
                         showDialog(
-                          context: context,
+                          context: navigator.context,
                           barrierDismissible: false,
                           builder: (context) =>
                               const Center(child: CircularProgressIndicator()),
@@ -765,11 +836,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
                           if (mounted) {
                             // Close loading dialog
-                            Navigator.pop(context);
+                            navigator.pop();
 
                             // Navigate to login page
-                            Navigator.pushAndRemoveUntil(
-                              context,
+                            navigator.pushAndRemoveUntil(
                               MaterialPageRoute(
                                 builder: (context) => const GoogleSignInPage(),
                               ),
@@ -777,14 +847,12 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
                           }
                         } catch (e) {
-                          debugPrint('Logout error: $e');
                           if (mounted) {
                             // Close loading dialog
-                            Navigator.pop(context);
+                            navigator.pop();
 
                             // Still navigate to login even if there's an error
-                            Navigator.pushAndRemoveUntil(
-                              context,
+                            navigator.pushAndRemoveUntil(
                               MaterialPageRoute(
                                 builder: (context) => const GoogleSignInPage(),
                               ),
@@ -801,8 +869,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Log Out',
+                    child: Text(
+                      LanguageService.tr('log_out'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -870,6 +938,406 @@ class _ProfilePageState extends State<ProfilePage> {
               Icon(Icons.chevron_right, color: _secondaryText),
           ],
         ),
+      ),
+    );
+  }
+}
+// ─── Customization Bottom Sheet ─────────────────────────────────────
+
+class _CustomizationSheet extends StatefulWidget {
+  final bool isDarkMode;
+  final DarkModeOption darkModeOption;
+  final int accentColorIndex;
+  final Function(DarkModeOption) onDarkModeOptionChanged;
+  final Function(int) onAccentColorChanged;
+  final Color cardBackground;
+  final Color primaryText;
+  final Color secondaryText;
+
+  const _CustomizationSheet({
+    required this.isDarkMode,
+    required this.darkModeOption,
+    required this.accentColorIndex,
+    required this.onDarkModeOptionChanged,
+    required this.onAccentColorChanged,
+    required this.cardBackground,
+    required this.primaryText,
+    required this.secondaryText,
+  });
+
+  @override
+  State<_CustomizationSheet> createState() => _CustomizationSheetState();
+}
+
+class _CustomizationSheetState extends State<_CustomizationSheet> {
+  late DarkModeOption _selectedMode;
+  late int _selectedColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMode = widget.darkModeOption;
+    _selectedColor = widget.accentColorIndex;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = widget.isDarkMode ? ThemeService.bgCard : Colors.white;
+    final textColor = widget.primaryText;
+    final subtextColor = widget.secondaryText;
+    final accent = ThemeService.accentColors[_selectedColor];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: subtextColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            LanguageService.tr('customization'),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Accent Color ───────────────────────────
+          Text(
+            LanguageService.tr('accent_color'),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: subtextColor,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: List.generate(ThemeService.accentColors.length, (i) {
+              final color = ThemeService.accentColors[i];
+              final isSelected = i == _selectedColor;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedColor = i);
+                    widget.onAccentColorChanged(i);
+                  },
+                  child: Column(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: textColor, width: 2.5)
+                              : Border.all(color: Colors.transparent, width: 2.5),
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check, color: Colors.white, size: 18)
+                            : null,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        ThemeService.accentColorNames[i],
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: isSelected ? textColor : subtextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+
+          const SizedBox(height: 28),
+
+          // ── Dark Mode ──────────────────────────────
+          Text(
+            LanguageService.tr('appearance'),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: subtextColor,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildModeOption(
+            label: LanguageService.tr('system'),
+            subtitle: LanguageService.tr('follow_device'),
+            icon: Icons.settings_suggest_outlined,
+            option: DarkModeOption.system,
+            accent: accent,
+            textColor: textColor,
+            subtextColor: subtextColor,
+          ),
+          _buildModeOption(
+            label: LanguageService.tr('light'),
+            subtitle: LanguageService.tr('always_light'),
+            icon: Icons.light_mode_outlined,
+            option: DarkModeOption.light,
+            accent: accent,
+            textColor: textColor,
+            subtextColor: subtextColor,
+          ),
+          _buildModeOption(
+            label: LanguageService.tr('dark'),
+            subtitle: LanguageService.tr('always_dark'),
+            icon: Icons.dark_mode_outlined,
+            option: DarkModeOption.dark,
+            accent: accent,
+            textColor: textColor,
+            subtextColor: subtextColor,
+          ),
+          _buildModeOption(
+            label: LanguageService.tr('amoled') + ' ' + LanguageService.tr('dark'),
+            subtitle: LanguageService.tr('pure_black_bg'),
+            icon: Icons.brightness_2_outlined,
+            option: DarkModeOption.amoled,
+            accent: accent,
+            textColor: textColor,
+            subtextColor: subtextColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeOption({
+    required String label,
+    required String subtitle,
+    required IconData icon,
+    required DarkModeOption option,
+    required Color accent,
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    final isSelected = _selectedMode == option;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedMode = option);
+        widget.onDarkModeOptionChanged(option);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: isSelected ? accent : subtextColor),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: textColor,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: subtextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? accent : subtextColor.withValues(alpha: 0.4),
+                  width: isSelected ? 6 : 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Language Bottom Sheet ───────────────────────────────────────────
+
+class _LanguageSheet extends StatefulWidget {
+  final bool isDarkMode;
+  final Color cardBackground;
+  final Color primaryText;
+  final Color secondaryText;
+  final Function(String) onLanguageChanged;
+
+  const _LanguageSheet({
+    required this.isDarkMode,
+    required this.cardBackground,
+    required this.primaryText,
+    required this.secondaryText,
+    required this.onLanguageChanged,
+  });
+
+  @override
+  State<_LanguageSheet> createState() => _LanguageSheetState();
+}
+
+class _LanguageSheetState extends State<_LanguageSheet> {
+  late String _selectedCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCode = LanguageService.languageCode;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = ThemeService.accent;
+    final languages = LanguageService.supportedLanguages;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.65,
+      ),
+      decoration: BoxDecoration(
+        color: widget.cardBackground,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: widget.secondaryText.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            LanguageService.tr('language'),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: widget.primaryText,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            LanguageService.tr('choose_language'),
+            style: TextStyle(
+              fontSize: 13,
+              color: widget.secondaryText,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: languages.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: widget.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+              itemBuilder: (context, index) {
+                final lang = languages[index];
+                final code = lang['code']!;
+                final isSelected = code == _selectedCode;
+
+                return InkWell(
+                  onTap: () {
+                    setState(() => _selectedCode = code);
+                    widget.onLanguageChanged(code);
+                    Navigator.pop(context);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                lang['nativeName']!,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected
+                                      ? accent
+                                      : widget.primaryText,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                lang['name']!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: widget.secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? accent
+                                  : widget.secondaryText.withValues(alpha: 0.4),
+                              width: isSelected ? 6 : 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }

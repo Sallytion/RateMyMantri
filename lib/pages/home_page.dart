@@ -1,11 +1,15 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:intl/intl.dart';
 import 'package:ip_detector/ip_detector.dart';
 import '../models/constituency.dart';
 import '../models/representative.dart';
+import '../services/theme_service.dart';
+import '../services/language_service.dart';
 import '../services/constituency_service.dart';
 import '../services/representative_service.dart';
 import '../services/google_news_decoder.dart';
@@ -13,6 +17,7 @@ import '../services/article_extractor.dart';
 import 'constituency_search_page.dart';
 import 'representative_detail_page.dart';
 import 'article_viewer_page.dart';
+import '../widgets/skeleton_widgets.dart';
 
 class _HomeArticle {
   final String title;
@@ -28,17 +33,15 @@ class _HomeArticle {
     required this.link,
     required this.source,
     required this.pubDate,
-    this.decodedUrl,
-    this.articleText,
-    this.imageUrl,
   });
 }
 
 class HomePage extends StatefulWidget {
   final bool isDarkMode;
   final void Function(int)? onNavigateToTab;
+  final String languageCode;
 
-  const HomePage({super.key, required this.isDarkMode, this.onNavigateToTab});
+  const HomePage({super.key, required this.isDarkMode, this.onNavigateToTab, required this.languageCode});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -53,18 +56,8 @@ class _HomePageState extends State<HomePage> {
   // ─── Static in-memory cache (survives widget rebuilds) ─────────
   static Constituency? _cachedConstituency;
   static List<Representative>? _cachedRepresentatives;
-  static String? _cachedRepConstituencyName; // key for rep cache
   static List<_HomeArticle>? _cachedNewsArticles;
   static bool _newsFetchedThisSession = false;
-
-  /// Call this to force-clear all cached data (e.g. on logout).
-  static void clearCache() {
-    _cachedConstituency = null;
-    _cachedRepresentatives = null;
-    _cachedRepConstituencyName = null;
-    _cachedNewsArticles = null;
-    _newsFetchedThisSession = false;
-  }
 
   Constituency? _currentConstituency;
   bool _isLoadingConstituency = true;
@@ -102,6 +95,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.languageCode != widget.languageCode) {
+      // Language changed — clear all caches and re-fetch
+      _cachedNewsArticles = null;
+      _newsFetchedThisSession = false;
+      _cachedRepresentatives = null;
+      _loadLocalNews();
+      // Re-fetch representatives with the new language
+      if (_currentConstituency != null) {
+        _loadRepresentatives(_currentConstituency!.name);
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _repPageController.dispose();
     super.dispose();
@@ -111,28 +120,34 @@ class _HomePageState extends State<HomePage> {
     final constituency = await _constituencyService.getCurrentConstituency();
     if (!mounted) return;
 
+    // Determine all state changes before calling setState once
+    List<Representative>? repsToUse;
+    bool shouldLoadReps = false;
+
+    if (constituency != null &&
+        _cachedConstituency?.name == constituency.name &&
+        _cachedRepresentatives != null) {
+      repsToUse = _cachedRepresentatives!;
+    } else if (constituency != null) {
+      shouldLoadReps = true;
+    }
+
     setState(() {
       _currentConstituency = constituency;
       _isLoadingConstituency = false;
+      if (constituency == null) {
+        _isLoadingRepresentatives = false;
+      } else if (repsToUse != null) {
+        _representatives = repsToUse;
+        _isLoadingRepresentatives = false;
+      }
     });
 
-    if (constituency == null) {
-      setState(() => _isLoadingRepresentatives = false);
-      return;
-    }
-
-    // If the constituency hasn't changed and we already have cached reps, reuse them
-    if (_cachedConstituency?.name == constituency.name &&
-        _cachedRepresentatives != null) {
-      setState(() {
-        _representatives = _cachedRepresentatives!;
-        _isLoadingRepresentatives = false;
-      });
-    } else {
-      _loadRepresentatives(constituency.name);
-    }
-
     _cachedConstituency = constituency;
+
+    if (shouldLoadReps) {
+      _loadRepresentatives(constituency!.name);
+    }
   }
 
   Future<void> _loadRepresentatives(String location) async {
@@ -141,7 +156,6 @@ class _HomePageState extends State<HomePage> {
     if (mounted) {
       final reps = result['representatives'] as List<Representative>? ?? [];
       _cachedRepresentatives = reps;
-      _cachedRepConstituencyName = location;
       setState(() {
         _representatives = reps;
         _isLoadingRepresentatives = false;
@@ -199,10 +213,12 @@ class _HomePageState extends State<HomePage> {
       if (loc != null) {
         final city = Uri.encodeComponent(loc['city']!);
         final countryCode = loc['country']!;
-        final hl = countryCode == 'IN' ? 'en-IN' : 'en-US';
-        url = 'https://news.google.com/rss/search?q=$city&hl=$hl&gl=$countryCode&ceid=$countryCode:en';
+        final params = countryCode == 'IN'
+            ? LanguageService.newsGlParams
+            : 'hl=en-US&gl=$countryCode&ceid=$countryCode:en';
+        url = 'https://news.google.com/rss/search?q=$city&$params';
       } else {
-        url = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en';
+        url = 'https://news.google.com/rss?${LanguageService.newsGlParams}';
       }
 
       final res = await http.get(Uri.parse(url));
@@ -235,15 +251,21 @@ class _HomePageState extends State<HomePage> {
         });
       }
 
-      // Process images in background
-      for (int i = 0; i < parsed.length; i++) {
-        _processArticleImage(i);
-      }
+      // Process all images in parallel, then rebuild once
+      _processAllArticleImages(parsed.length);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoadingNews = false);
       }
     }
+  }
+
+  /// Process all article images in parallel, then trigger a single rebuild.
+  Future<void> _processAllArticleImages(int count) async {
+    await Future.wait(
+      List.generate(count, (i) => _processArticleImage(i)),
+    );
+    if (mounted) setState(() {});
   }
 
   Future<void> _processArticleImage(int index) async {
@@ -273,8 +295,6 @@ class _HomePageState extends State<HomePage> {
         }
       } catch (_) {}
     }
-
-    if (mounted) setState(() {});
   }
 
   String _formatDate(String pubDate) {
@@ -315,7 +335,6 @@ class _HomePageState extends State<HomePage> {
       _cachedConstituency = result;
       // Constituency changed — invalidate representative cache and refetch
       _cachedRepresentatives = null;
-      _cachedRepConstituencyName = null;
       _loadRepresentatives(result.name);
     }
   }
@@ -323,13 +342,13 @@ class _HomePageState extends State<HomePage> {
   String _getOfficeLabel(String officeType) {
     switch (officeType) {
       case 'LOK_SABHA':
-        return 'Member of Parliament';
+        return LanguageService.tr('member_of_parliament');
       case 'STATE_ASSEMBLY':
-        return 'MLA';
+        return LanguageService.tr('mla');
       case 'RAJYA_SABHA':
-        return 'Rajya Sabha MP';
+        return LanguageService.tr('rajya_sabha_mp');
       case 'VIDHAN_PARISHAD':
-        return 'MLC';
+        return LanguageService.tr('mlc');
       default:
         return officeType;
     }
@@ -360,85 +379,82 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.isDarkMode
-          ? const Color(0xFF1A1A1A)
+          ? ThemeService.bgMain
           : const Color(0xFFF7F7F7),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Bar
-              Padding(
-                padding: const EdgeInsets.all(16.0),
+        child: CustomScrollView(
+          slivers: [
+            // Top Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Rate My Mantri',
+                      LanguageService.tr('home'),
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.w600,
                         color: widget.isDarkMode
                             ? Colors.white
                             : const Color(0xFF222222),
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    InkWell(
+                    GestureDetector(
                       onTap: _navigateToConstituencySearch,
-                      borderRadius: BorderRadius.circular(20),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: 10,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: widget.isDarkMode
-                              ? const Color(0xFF2A2A2A)
-                              : Colors.white,
+                              ? ThemeService.bgElev
+                              : const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: widget.isDarkMode
-                                ? const Color(0xFF3A3A3A)
-                                : const Color(0xFFDDDDDD),
-                          ),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.location_on,
-                              size: 16,
+                              Icons.location_on_outlined,
+                              size: 15,
                               color: widget.isDarkMode
-                                  ? Colors.white
-                                  : const Color(0xFF222222),
+                                  ? const Color(0xFFB0B0B0)
+                                  : const Color(0xFF717171),
                             ),
                             const SizedBox(width: 4),
                             _isLoadingConstituency
-                                ? SizedBox(
-                                    width: 80,
-                                    height: 14,
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 12,
-                                        height: 12,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.deepPurple,
-                                        ),
-                                      ),
+                                ? SkeletonShimmer(
+                                    isDarkMode: widget.isDarkMode,
+                                    child: SkeletonBox(
+                                      width: 70,
+                                      height: 13,
+                                      borderRadius: 4,
                                     ),
                                   )
                                 : Text(
-                                    _currentConstituency?.name ??
-                                        'Set Location',
+                                    _currentConstituency != null
+                                        ? LanguageService.translitName(_currentConstituency!.name)
+                                        : LanguageService.tr('set_location'),
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
                                       color: widget.isDarkMode
-                                          ? Colors.white
-                                          : const Color(0xFF222222),
+                                          ? const Color(0xFFB0B0B0)
+                                          : const Color(0xFF717171),
                                     ),
                                   ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down, size: 16),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 16,
+                              color: widget.isDarkMode
+                                  ? const Color(0xFFB0B0B0)
+                                  : const Color(0xFF717171),
+                            ),
                           ],
                         ),
                       ),
@@ -446,18 +462,18 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
+            ),
 
-              // Representatives Hero Cards (Swipable)
-              _buildRepresentativesSection(),
+            // Representatives Hero Cards (Swipable)
+            SliverToBoxAdapter(child: _buildRepresentativesSection()),
 
-              const SizedBox(height: 24),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-              // Local News Section
-              _buildNewsSection(),
+            // Local News Section (returns List<Widget> of slivers)
+            ..._buildNewsSlivers(),
 
-              const SizedBox(height: 24),
-            ],
-          ),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
         ),
       ),
     );
@@ -467,19 +483,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildRepresentativesSection() {
     if (_isLoadingRepresentatives) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(color: Colors.deepPurple),
-          ),
-        ),
-      );
+      return RepresentativeListSkeleton(isDarkMode: widget.isDarkMode);
     }
 
     if (_representatives.isEmpty) {
@@ -503,8 +507,8 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 12),
                 Text(
                   _currentConstituency == null
-                      ? 'Set your constituency to see representatives'
-                      : 'No representatives found',
+                      ? LanguageService.tr('set_constituency')
+                      : LanguageService.tr('no_reps_found'),
                   style: const TextStyle(color: Colors.white70, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
@@ -516,7 +520,7 @@ class _HomePageState extends State<HomePage> {
                       backgroundColor: const Color(0xFFFF7A59),
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Set Location'),
+                    child: Text(LanguageService.tr('set_location')),
                   ),
                 ],
               ],
@@ -621,11 +625,17 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ).createShader(rect),
                   blendMode: BlendMode.dstIn,
-                  child: Image.network(
-                    rep.imageUrl!,
+                  child: CachedNetworkImage(
+                    imageUrl: rep.imageUrl!,
                     width: 160,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    memCacheWidth: 320,
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!,
+                      highlightColor: Colors.grey[100]!,
+                      child: Container(width: 160, color: Colors.white),
+                    ),
+                    errorWidget: (_, _, _) => Container(
                       width: 160,
                       color: partyColor.withValues(alpha: 0.3),
                     ),
@@ -650,7 +660,7 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        rep.party,
+                        _safeTranslit(rep.party),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -673,7 +683,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 8),
                 // Name
                 Text(
-                  _formatRepName(rep.fullName),
+                  _safeTranslit(_formatRepName(rep.fullName)),
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -683,7 +693,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 2),
                 // Constituency
                 Text(
-                  '${rep.constituency}, ${rep.state}',
+                  '${_safeTranslit(rep.constituency)}, ${_safeTranslit(rep.state)}',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.white.withValues(alpha: 0.7),
@@ -716,7 +726,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ] else ...[
                       Text(
-                        'Not yet rated',
+                        LanguageService.tr('not_yet_rated'),
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.white.withValues(alpha: 0.7),
@@ -750,9 +760,9 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Rate Performance',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      child: Text(
+                        LanguageService.tr('rate_performance'),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -765,6 +775,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Transliterates [text] only if the backend hasn't already done so.
+  /// Once the backend adds ?lang= support to /v2/my-representatives,
+  /// it will return non-ASCII text and this becomes a no-op.
+  String _safeTranslit(String text) {
+    if (text.isEmpty || LanguageService.isEnglish) return text;
+    if (text.runes.any((r) => r > 127)) return text; // already transliterated
+    return LanguageService.translitName(text);
+  }
+
   String _formatRepName(String name) {
     // Convert "ALL CAPS NAME" to "Title Case"
     return name.split(' ').map((word) {
@@ -775,17 +794,17 @@ class _HomePageState extends State<HomePage> {
 
   // ─── News Section ──────────────────────────────────────────────
 
-  Widget _buildNewsSection() {
-    return Column(
-      children: [
-        // Section header with arrow
-        Padding(
+  List<Widget> _buildNewsSlivers() {
+    return [
+      // Section header with arrow
+      SliverToBoxAdapter(
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Local News',
+                LanguageService.tr('local_news'),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -802,7 +821,7 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     Text(
-                      'See all',
+                      LanguageService.tr('see_all'),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -821,46 +840,53 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        if (_isLoadingNews)
-          SizedBox(
-            height: 120,
-            child: Center(
-              child: CircularProgressIndicator(color: Colors.deepPurple),
-            ),
-          )
-        else if (_newsArticles.isEmpty)
-          Padding(
+      ),
+      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+      if (_isLoadingNews)
+        SliverToBoxAdapter(
+          child: NewsListSkeleton(isDarkMode: widget.isDarkMode),
+        )
+      else if (_newsArticles.isEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Container(
               height: 100,
               decoration: BoxDecoration(
-                color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+                color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
-                  'No news available',
+                  LanguageService.tr('no_news_available'),
                   style: TextStyle(
                     color: widget.isDarkMode ? Colors.white54 : Colors.grey,
                   ),
                 ),
               ),
             ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: _newsArticles.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              return _buildNewsListTile(_newsArticles[index], index);
-            },
           ),
-      ],
-    );
+        )
+      else
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                // Interleave items with 12px separators
+                final itemIndex = index ~/ 2;
+                if (index.isOdd) {
+                  return const SizedBox(height: 12);
+                }
+                return _buildNewsListTile(_newsArticles[itemIndex], itemIndex);
+              },
+              childCount: _newsArticles.isEmpty
+                  ? 0
+                  : _newsArticles.length * 2 - 1,
+            ),
+          ),
+        ),
+    ];
   }
 
   Widget _buildNewsListTile(_HomeArticle article, int index) {
@@ -884,7 +910,7 @@ class _HomePageState extends State<HomePage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -906,16 +932,23 @@ class _HomePageState extends State<HomePage> {
                 width: 100,
                 height: 100,
                 child: article.imageUrl != null
-                    ? Image.network(
-                        article.imageUrl!,
+                    ? CachedNetworkImage(
+                        imageUrl: article.imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        memCacheWidth: 200,
+                        memCacheHeight: 200,
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Container(color: Colors.white),
+                        ),
+                        errorWidget: (_, _, _) => Container(
                           color: const Color(0xFFE0E0E0),
                           child: const Icon(Icons.article, color: Color(0xFFBDBDBD), size: 32),
                         ),
                       )
                     : Container(
-                        color: widget.isDarkMode ? const Color(0xFF3A3A3A) : const Color(0xFFE0E0E0),
+                        color: widget.isDarkMode ? ThemeService.bgBorder : const Color(0xFFE0E0E0),
                         child: const Icon(Icons.article, color: Color(0xFFBDBDBD), size: 32),
                       ),
               ),
@@ -929,7 +962,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     if (article.source.isNotEmpty)
                       Text(
-                        article.source,
+                        LanguageService.translitName(article.source),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -938,7 +971,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     const SizedBox(height: 4),
                     Text(
-                      article.title,
+                      LanguageService.translitName(article.title),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,

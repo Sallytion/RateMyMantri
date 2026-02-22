@@ -29,7 +29,7 @@ class RatingStatistics {
 
   factory RatingStatistics.fromJson(Map<String, dynamic> json) {
     // Helper function to safely parse double
-    double _parseDouble(dynamic value) {
+    double parseDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is double) return value;
       if (value is int) return value.toDouble();
@@ -42,13 +42,14 @@ class RatingStatistics {
     }
 
     // Helper function to safely parse int
-    int _parseInt(dynamic value, int defaultValue) {
+    int parseInt(dynamic value, int defaultValue) {
       if (value == null) return defaultValue;
       if (value is int) return value;
       if (value is String) {
         final trimmed = value.trim();
-        if (trimmed.isEmpty || trimmed.toLowerCase() == 'null')
+        if (trimmed.isEmpty || trimmed.toLowerCase() == 'null') {
           return defaultValue;
+        }
         return int.tryParse(trimmed) ?? defaultValue;
       }
       return defaultValue;
@@ -70,30 +71,30 @@ class RatingStatistics {
     }
 
     return RatingStatistics(
-      representativeId: _parseInt(
+      representativeId: parseInt(
         json['representativeId'] ?? json['representative_id'],
         0,
       ),
-      totalRatings: _parseInt(json['totalRatings'] ?? json['total_ratings'], 0),
-      verifiedNamedCount: _parseInt(
+      totalRatings: parseInt(json['totalRatings'] ?? json['total_ratings'], 0),
+      verifiedNamedCount: parseInt(
         json['verifiedNamedCount'] ?? json['verified_named_count'],
         0,
       ),
-      verifiedAnonymousCount: _parseInt(
+      verifiedAnonymousCount: parseInt(
         json['verifiedAnonymousCount'] ?? json['verified_anonymous_count'],
         0,
       ),
-      unverifiedCount: _parseInt(
+      unverifiedCount: parseInt(
         json['unverifiedCount'] ?? json['unverified_count'],
         0,
       ),
-      avgOverallScore: _parseDouble(
+      avgOverallScore: parseDouble(
         json['avgOverallScore'] ?? json['avg_overall_score'],
       ),
-      avgQ1Stars: _parseDouble(json['avgQ1Stars'] ?? json['avg_q1_stars']),
-      avgQ2Stars: _parseDouble(json['avgQ2Stars'] ?? json['avg_q2_stars']),
-      avgQ3Stars: _parseDouble(json['avgQ3Stars'] ?? json['avg_q3_stars']),
-      overallStars: _parseInt(json['overallStars'] ?? json['overall_stars'], 0),
+      avgQ1Stars: parseDouble(json['avgQ1Stars'] ?? json['avg_q1_stars']),
+      avgQ2Stars: parseDouble(json['avgQ2Stars'] ?? json['avg_q2_stars']),
+      avgQ3Stars: parseDouble(json['avgQ3Stars'] ?? json['avg_q3_stars']),
+      overallStars: parseInt(json['overallStars'] ?? json['overall_stars'], 0),
       latestRatingDate:
           json['latestRatingDate'] != null || json['latest_rating_date'] != null
           ? DateTime.tryParse(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
 
@@ -38,21 +39,14 @@ class GoogleNewsDecoder {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final document = html_parser.parse(response.body);
-        final dataElement = document.querySelector('c-wiz > div[jscontroller]');
-
-        if (dataElement != null) {
-          final signature = dataElement.attributes['data-n-a-sg'];
-          final timestamp = dataElement.attributes['data-n-a-ts'];
-
-          if (signature != null && timestamp != null) {
-            return {
-              'status': true,
-              'signature': signature,
-              'timestamp': timestamp,
-              'base64_str': base64Str,
-            };
-          }
+        final params = await compute(_extractDecodingParams, response.body);
+        if (params != null) {
+          return {
+            'status': true,
+            'signature': params['signature'],
+            'timestamp': params['timestamp'],
+            'base64_str': base64Str,
+          };
         }
       }
     } catch (e) {
@@ -67,21 +61,14 @@ class GoogleNewsDecoder {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final document = html_parser.parse(response.body);
-        final dataElement = document.querySelector('c-wiz > div[jscontroller]');
-
-        if (dataElement != null) {
-          final signature = dataElement.attributes['data-n-a-sg'];
-          final timestamp = dataElement.attributes['data-n-a-ts'];
-
-          if (signature != null && timestamp != null) {
-            return {
-              'status': true,
-              'signature': signature,
-              'timestamp': timestamp,
-              'base64_str': base64Str,
-            };
-          }
+        final params = await compute(_extractDecodingParams, response.body);
+        if (params != null) {
+          return {
+            'status': true,
+            'signature': params['signature'],
+            'timestamp': params['timestamp'],
+            'base64_str': base64Str,
+          };
         }
       }
 
@@ -182,4 +169,18 @@ class GoogleNewsDecoder {
       return {'status': false, 'message': 'Error in decodeGoogleNewsUrl: $e'};
     }
   }
+}
+
+/// Top-level function for compute() — parses Google News HTML to extract decoding params.
+Map<String, String>? _extractDecodingParams(String htmlBody) {
+  final document = html_parser.parse(htmlBody);
+  final dataElement = document.querySelector('c-wiz > div[jscontroller]');
+  if (dataElement != null) {
+    final signature = dataElement.attributes['data-n-a-sg'];
+    final timestamp = dataElement.attributes['data-n-a-ts'];
+    if (signature != null && timestamp != null) {
+      return {'signature': signature, 'timestamp': timestamp};
+    }
+  }
+  return null;
 }
