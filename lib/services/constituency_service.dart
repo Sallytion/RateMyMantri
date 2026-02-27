@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/constituency.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'language_service.dart';
 
 class ConstituencyService {
   static const String baseUrl = 'https://ratemymantri.sallytion.qzz.io';
@@ -18,9 +20,15 @@ class ConstituencyService {
         throw Exception('No access token available');
       }
 
+      final lang = LanguageService.languageCode;
       final uri = Uri.parse(
         '$baseUrl/user/constituencies/search',
-      ).replace(queryParameters: {'q': query});
+      ).replace(queryParameters: {'q': query, if (lang != 'en') 'lang': lang});
+
+      debugPrint('[CSSearch] lang=$lang');
+      debugPrint('[CSSearch] raw query="$query" (len=${query.length})');
+      debugPrint('[CSSearch] query codepoints=${query.runes.toList()}');
+      debugPrint('[CSSearch] full URL=${uri.toString()}');
 
       final response = await http.get(
         uri,
@@ -30,6 +38,9 @@ class ConstituencyService {
         },
       );
 
+      debugPrint('[CSSearch] HTTP status=${response.statusCode}');
+      debugPrint('[CSSearch] response body=${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final constituencies =
@@ -38,13 +49,44 @@ class ConstituencyService {
                 .toList() ??
             [];
 
+        debugPrint('[CSSearch] parsed ${constituencies.length} results');
+
+        // Fallback: if Indic-script query returned nothing, retry with Latin
+        // transliteration. Remove once backend supports native-script matching.
+        if (constituencies.isEmpty && query.runes.any((c) => c > 127)) {
+          final latin = LanguageService.translitToLatin(query);
+          if (latin != query) {
+            debugPrint('[CSSearch] 0 results for Indic query, retrying with latin="$latin"');
+            final fallbackUri = Uri.parse('$baseUrl/user/constituencies/search')
+                .replace(queryParameters: {'q': latin, if (lang != 'en') 'lang': lang});
+            final fallbackResponse = await http.get(fallbackUri, headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            });
+            debugPrint('[CSSearch] fallback status=${fallbackResponse.statusCode}');
+            debugPrint('[CSSearch] fallback body=${fallbackResponse.body}');
+            if (fallbackResponse.statusCode == 200) {
+              final fallbackData = json.decode(fallbackResponse.body);
+              final fallbackConstituencies =
+                  (fallbackData['constituencies'] as List?)
+                      ?.map((json) => Constituency.fromJson(json))
+                      .toList() ??
+                  [];
+              debugPrint('[CSSearch] fallback parsed ${fallbackConstituencies.length} results');
+              return {'constituencies': fallbackConstituencies, 'count': fallbackData['count'] ?? 0};
+            }
+          }
+        }
+
         return {'constituencies': constituencies, 'count': data['count'] ?? 0};
       } else {
+        debugPrint('[CSSearch] ERROR: ${response.statusCode} ${response.body}');
         throw Exception(
           'Failed to search constituencies: ${response.statusCode}',
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[CSSearch] EXCEPTION: $e\n$stack');
       return {'constituencies': <Constituency>[], 'count': 0};
     }
   }
@@ -56,7 +98,9 @@ class ConstituencyService {
         return null;
       }
 
-      final uri = Uri.parse('$baseUrl/user/constituency/current');
+      final lang = LanguageService.languageCode;
+      final uri = Uri.parse('$baseUrl/user/constituency/current')
+          .replace(queryParameters: {if (lang != 'en') 'lang': lang});
 
       final response = await http.get(
         uri,
@@ -91,7 +135,9 @@ class ConstituencyService {
         throw Exception('No access token available');
       }
 
-      final uri = Uri.parse('$baseUrl/user/constituency/current');
+      final lang = LanguageService.languageCode;
+      final uri = Uri.parse('$baseUrl/user/constituency/current')
+          .replace(queryParameters: {if (lang != 'en') 'lang': lang});
 
       final response = await http.post(
         uri,

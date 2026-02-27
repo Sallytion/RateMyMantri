@@ -68,7 +68,8 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
   }
 
   Future<void> _performSearch(String query) async {
-    final result = await _constituencyService.searchConstituencies(LanguageService.translitToLatin(query));
+    // Pass raw input — the backend now handles both Latin and native-script queries
+    final result = await _constituencyService.searchConstituencies(query);
 
     if (mounted) {
       setState(() {
@@ -96,7 +97,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
         _selectedConstituency = result['constituency'] as Constituency?;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${LanguageService.tr('constituency_set_to')} ${LanguageService.translitName(constituency.name)}'),
+            content: Text('${LanguageService.tr('constituency_set_to')} ${constituency.name}'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -228,7 +229,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          LanguageService.translitName(_selectedConstituency!.name),
+                          _selectedConstituency!.name,
                           style: TextStyle(
                             fontSize: 16,
                             color: textColor,
@@ -240,7 +241,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                               ? LanguageService.tr('lok_sabha')
                               : _selectedConstituency!.type == 'vidhan_sabha_constituency'
                                   ? LanguageService.tr('vidhan_sabha')
-                                  : LanguageService.translitName(_selectedConstituency!.displayType),
+                                  : _selectedConstituency!.displayType,
                           style: TextStyle(
                             fontSize: 13,
                             color: textColor.withValues(alpha: 0.7),
@@ -359,7 +360,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      LanguageService.translitName(constituency.name),
+                                      constituency.name,
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -372,7 +373,7 @@ class _ConstituencySearchPageState extends State<ConstituencySearchPage> {
                                           ? LanguageService.tr('lok_sabha')
                                           : constituency.type == 'vidhan_sabha_constituency'
                                               ? LanguageService.tr('vidhan_sabha')
-                                              : LanguageService.translitName(constituency.displayType),
+                                              : constituency.displayType,
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: textColor.withValues(alpha: 0.6),

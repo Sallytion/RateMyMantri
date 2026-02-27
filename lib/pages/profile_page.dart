@@ -9,6 +9,7 @@ import 'rate_page.dart';
 import 'saved_articles_page.dart';
 import '../services/auth_storage_service.dart';
 import '../services/constituency_service.dart';
+import '../services/constituency_notifier.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
 import '../models/constituency.dart';
@@ -67,6 +68,23 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadCurrentConstituency();
+    // Listen for constituency changes made on the Home page
+    ConstituencyNotifier.instance.notifier.addListener(_onConstituencyNotified);
+  }
+
+  @override
+  void dispose() {
+    ConstituencyNotifier.instance.notifier.removeListener(_onConstituencyNotified);
+    super.dispose();
+  }
+
+  void _onConstituencyNotified() {
+    final c = ConstituencyNotifier.instance.current;
+    if (c != null && c.id != _currentConstituency?.id && mounted) {
+      setState(() {
+        _currentConstituency = c;
+      });
+    }
   }
 
   Future<void> _loadCurrentConstituency() async {
@@ -94,6 +112,8 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         _currentConstituency = result;
       });
+      // Notify HomePage (and any other listeners) of the change
+      ConstituencyNotifier.instance.set(result);
     }
   }
 
@@ -337,7 +357,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       title: LanguageService.tr('constituency_label'),
                       subtitle: _isLoadingConstituency
                           ? LanguageService.tr('loading')
-                          : LanguageService.translitName(_currentConstituency?.name ?? LanguageService.tr('not_set')),
+                          : _currentConstituency?.name ?? LanguageService.tr('not_set'),
                       onTap: _navigateToConstituencySearch,
                       showArrow: true,
                     ),

@@ -11,6 +11,7 @@ import '../models/representative.dart';
 import '../services/theme_service.dart';
 import '../services/language_service.dart';
 import '../services/constituency_service.dart';
+import '../services/constituency_notifier.dart';
 import '../services/representative_service.dart';
 import '../services/google_news_decoder.dart';
 import '../services/article_extractor.dart';
@@ -92,6 +93,24 @@ class _HomePageState extends State<HomePage> {
 
     _loadCurrentConstituency();
     _loadLocalNews();
+
+    // Listen for constituency changes made on the Profile page
+    ConstituencyNotifier.instance.notifier.addListener(_onConstituencyNotified);
+  }
+
+  void _onConstituencyNotified() {
+    final c = ConstituencyNotifier.instance.current;
+    if (c == null || c.id == _currentConstituency?.id) return;
+    // We already have the full Constituency object — apply immediately,
+    // no API round-trip needed.
+    _cachedConstituency = c;
+    _cachedRepresentatives = null;
+    setState(() {
+      _currentConstituency = c;
+      _isLoadingConstituency = false;
+      _isLoadingRepresentatives = true;
+    });
+    _loadRepresentatives(c.nameEn);
   }
 
   @override
@@ -105,13 +124,14 @@ class _HomePageState extends State<HomePage> {
       _loadLocalNews();
       // Re-fetch representatives with the new language
       if (_currentConstituency != null) {
-        _loadRepresentatives(_currentConstituency!.name);
+        _loadRepresentatives(_currentConstituency!.nameEn);
       }
     }
   }
 
   @override
   void dispose() {
+    ConstituencyNotifier.instance.notifier.removeListener(_onConstituencyNotified);
     _repPageController.dispose();
     super.dispose();
   }
@@ -125,7 +145,7 @@ class _HomePageState extends State<HomePage> {
     bool shouldLoadReps = false;
 
     if (constituency != null &&
-        _cachedConstituency?.name == constituency.name &&
+        _cachedConstituency?.id == constituency.id &&
         _cachedRepresentatives != null) {
       repsToUse = _cachedRepresentatives!;
     } else if (constituency != null) {
@@ -146,7 +166,7 @@ class _HomePageState extends State<HomePage> {
     _cachedConstituency = constituency;
 
     if (shouldLoadReps) {
-      _loadRepresentatives(constituency!.name);
+      _loadRepresentatives(constituency!.nameEn);
     }
   }
 
@@ -335,7 +355,9 @@ class _HomePageState extends State<HomePage> {
       _cachedConstituency = result;
       // Constituency changed — invalidate representative cache and refetch
       _cachedRepresentatives = null;
-      _loadRepresentatives(result.name);
+      _loadRepresentatives(result.nameEn);
+      // Notify ProfilePage (and any other listeners) of the change
+      ConstituencyNotifier.instance.set(result);
     }
   }
 
@@ -437,7 +459,7 @@ class _HomePageState extends State<HomePage> {
                                   )
                                 : Text(
                                     _currentConstituency != null
-                                        ? LanguageService.translitName(_currentConstituency!.name)
+                                        ? _currentConstituency!.name
                                         : LanguageService.tr('set_location'),
                                     style: TextStyle(
                                       fontSize: 13,

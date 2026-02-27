@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -74,14 +75,33 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       final idToken = authentication.idToken;
 
       if (idToken == null) {
+        debugPrint('[AUTH] ERROR: idToken is null. Check Web OAuth Client ID in serverClientId.');
         throw Exception(
           'Failed to get ID token. Please check Google Cloud Console OAuth setup.',
         );
       }
 
+      debugPrint('[AUTH] Got idToken (first 40 chars): ${idToken.substring(0, 40)}...');
+
+      // ── Domain reachability probe ──────────────────────────────────────────
+      // Tests a plain GET on the same domain BEFORE the auth POST.
+      // If this also fails with hostname mismatch → cert issue affects everything.
+      // If this SUCCEEDS → problem is specific to the POST /auth/google path.
+      try {
+        final probe = await http.get(
+          Uri.parse('https://ratemymantri.sallytion.qzz.io/health'),
+        ).timeout(const Duration(seconds: 5));
+        debugPrint('[AUTH] /health probe status: ${probe.statusCode}');
+        debugPrint('[AUTH] /health probe body: ${probe.body}');
+      } catch (e) {
+        debugPrint('[AUTH] /health probe FAILED: $e');
+      }
+      // ──────────────────────────────────────────────────────────────────────
+
       // Authenticate with backend
       await _authenticateWithBackend(idToken, account);
     } catch (error) {
+      debugPrint('[AUTH] _handleSignIn caught error: $error');
       if (mounted) {
         setState(() {
           _errorMessage = LanguageService.tr('sign_in_failed');
@@ -96,11 +116,15 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     GoogleSignInAccount account,
   ) async {
     try {
+      debugPrint('[AUTH] Posting idToken to /auth/google...');
       final response = await http.post(
         Uri.parse('https://ratemymantri.sallytion.qzz.io/auth/google'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'idToken': idToken}),
       );
+
+      debugPrint('[AUTH] /auth/google response status: ${response.statusCode}');
+      debugPrint('[AUTH] /auth/google response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -128,11 +152,13 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
           }
         }
       } else {
+        debugPrint('[AUTH] Backend rejected with ${response.statusCode}: ${response.body}');
         throw Exception(
-          'Backend authentication failed: ${response.statusCode}',
+          'Backend authentication failed: ${response.statusCode} — ${response.body}',
         );
       }
     } catch (error) {
+      debugPrint('[AUTH] _authenticateWithBackend caught error: $error');
       if (mounted) {
         setState(() {
           _errorMessage = LanguageService.tr('auth_failed');

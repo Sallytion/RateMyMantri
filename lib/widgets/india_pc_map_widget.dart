@@ -30,6 +30,14 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
   Symbol? droppedPin;
 
   @override
+  void didUpdateWidget(covariant IndiaPCMapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isDarkMode != widget.isDarkMode && mapController != null) {
+      mapController!.setStyle(_getMapStyleJson());
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MapLibreMap(
       styleString: _getMapStyleJson(),
@@ -130,6 +138,12 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
   String _getMapStyleJson() {
     final backgroundColor = widget.isDarkMode ? '#1a1a1a' : '#f8f8f8';
 
+    // CARTO label-only tiles — renders place names with proper font support
+    // for all scripts (Devanagari, Tamil, Telugu, etc.).
+    final labelTileUrl = widget.isDarkMode
+        ? 'https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png'
+        : 'https://basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png';
+
     return '''
 {
   "version": 8,
@@ -139,6 +153,13 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
       "tiles": ["https://IndiaMap.sallytion.qzz.io/{z}/{x}/{y}.pbf"],
       "minzoom": 4,
       "maxzoom": 10
+    },
+    "place-labels": {
+      "type": "raster",
+      "tiles": ["$labelTileUrl"],
+      "tileSize": 512,
+      "minzoom": 0,
+      "maxzoom": 20
     }
   },
   "layers": [
@@ -208,6 +229,14 @@ class _IndiaPCMapWidgetState extends State<IndiaPCMapWidget> {
         "line-color": "#333333",
         "line-width": 0.5,
         "line-opacity": 0.3
+      }
+    },
+    {
+      "id": "place-labels-layer",
+      "type": "raster",
+      "source": "place-labels",
+      "paint": {
+        "raster-opacity": 1.0
       }
     }
   ]
