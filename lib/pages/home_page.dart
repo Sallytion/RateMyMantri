@@ -7,6 +7,7 @@ import 'package:xml/xml.dart' as xml;
 import 'package:intl/intl.dart';
 import 'package:ip_detector/ip_detector.dart';
 import '../models/constituency.dart';
+import '../models/home_section.dart';
 import '../models/representative.dart';
 import '../services/theme_service.dart';
 import '../services/language_service.dart';
@@ -15,9 +16,11 @@ import '../services/constituency_notifier.dart';
 import '../services/representative_service.dart';
 import '../services/google_news_decoder.dart';
 import '../services/article_extractor.dart';
+import '../services/home_sections_service.dart';
 import 'constituency_search_page.dart';
 import 'representative_detail_page.dart';
 import 'article_viewer_page.dart';
+import 'webview_page.dart';
 import '../widgets/skeleton_widgets.dart';
 
 class _HomeArticle {
@@ -60,6 +63,10 @@ class _HomePageState extends State<HomePage> {
   static List<_HomeArticle>? _cachedNewsArticles;
   static bool _newsFetchedThisSession = false;
 
+  // Home sections (API-driven)
+  List<HomeSection> _homeSections = [];
+  bool _isLoadingSections = true;
+
   Constituency? _currentConstituency;
   bool _isLoadingConstituency = true;
 
@@ -93,6 +100,7 @@ class _HomePageState extends State<HomePage> {
 
     _loadCurrentConstituency();
     _loadLocalNews();
+    _loadHomeSections();
 
     // Listen for constituency changes made on the Profile page
     ConstituencyNotifier.instance.notifier.addListener(_onConstituencyNotified);
@@ -116,8 +124,9 @@ class _HomePageState extends State<HomePage> {
   @override
   void didUpdateWidget(covariant HomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.languageCode != widget.languageCode) {
-      // Language changed — clear all caches and re-fetch
+    if (oldWidget.languageCode != widget.languageCode ||
+        oldWidget.isDarkMode != widget.isDarkMode) {
+      // Language or theme changed — clear all caches and re-fetch
       _cachedNewsArticles = null;
       _newsFetchedThisSession = false;
       _cachedRepresentatives = null;
@@ -126,6 +135,8 @@ class _HomePageState extends State<HomePage> {
       if (_currentConstituency != null) {
         _loadRepresentatives(_currentConstituency!.nameEn);
       }
+      // Re-fetch sections with updated lang/theme
+      HomeSectionsService.clearAll().then((_) => _loadHomeSections());
     }
   }
 
@@ -494,6 +505,9 @@ class _HomePageState extends State<HomePage> {
             // Local News Section (returns List<Widget> of slivers)
             ..._buildNewsSlivers(),
 
+            // API-driven banner sections (Noticeboard, Games, …)
+            ..._buildApiSections(),
+
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
@@ -812,6 +826,194 @@ class _HomePageState extends State<HomePage> {
       if (word.isEmpty) return word;
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     }).join(' ');
+  }
+
+  // ─── API-driven Banner Sections ──────────────────────────────────
+
+  /// Fetches sections from the backend and stores them in state.
+  Future<void> _loadHomeSections() async {
+    if (!mounted) return;
+    setState(() => _isLoadingSections = true);
+
+    final theme = widget.isDarkMode ? 'dark' : 'light';
+    final lang = LanguageService.languageCode;
+
+    final sections = await HomeSectionsService.fetchSections(
+      lang: lang,
+      theme: theme,
+    );
+
+    if (mounted) {
+      setState(() {
+        _homeSections = sections;
+        _isLoadingSections = false;
+      });
+    }
+  }
+
+  /// Converts the `icon` string from the API to a Material [IconData].
+  /// Falls back to a generic play/arrow icon for any unknown value.
+  IconData _iconFromString(String iconName) {
+    switch (iconName) {
+      case 'campaign_outlined':
+        return Icons.campaign_outlined;
+      case 'sports_esports_outlined':
+        return Icons.sports_esports_outlined;
+      case 'notifications_outlined':
+        return Icons.notifications_outlined;
+      case 'info_outline':
+        return Icons.info_outline;
+      case 'star_outline':
+        return Icons.star_outline;
+      case 'emoji_events_outlined':
+        return Icons.emoji_events_outlined;
+      case 'chat_bubble_outline':
+        return Icons.chat_bubble_outline;
+      case 'poll_outlined':
+        return Icons.poll_outlined;
+      case 'article_outlined':
+        return Icons.article_outlined;
+      case 'video_library_outlined':
+        return Icons.video_library_outlined;
+      default:
+        return Icons.play_arrow_outlined;
+    }
+  }
+
+  /// Builds section slivers from the API response.
+  /// Shows a shimmer placeholder while loading; hides completely on empty list.
+  List<Widget> _buildApiSections() {
+    if (_isLoadingSections) {
+      // Subtle shimmer placeholder for two expected sections
+      return [
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SkeletonShimmer(
+              isDarkMode: widget.isDarkMode,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBox(width: 140, height: 20, borderRadius: 6),
+                  const SizedBox(height: 12),
+                  SkeletonBox(
+                    width: double.infinity,
+                    height: 160,
+                    borderRadius: 16,
+                  ),
+                  const SizedBox(height: 16),
+                  SkeletonBox(width: 100, height: 20, borderRadius: 6),
+                  const SizedBox(height: 12),
+                  SkeletonBox(
+                    width: double.infinity,
+                    height: 160,
+                    borderRadius: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    if (_homeSections.isEmpty) return [];
+
+    final slivers = <Widget>[];
+    for (final section in _homeSections) {
+      if (section.type == 'webview_banner') {
+        slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 16)));
+        slivers.add(
+          SliverToBoxAdapter(
+            child: _buildWebviewBannerCard(section),
+          ),
+        );
+      }
+      // Unknown types are silently skipped (per §11 of the spec)
+    }
+    return slivers;
+  }
+
+  /// Renders a single `webview_banner` section card.
+  Widget _buildWebviewBannerCard(HomeSection section) {
+    final icon = _iconFromString(section.icon);
+    final bannerImageUrl = section.bannerImageUrl!;
+    final webviewUrl = section.webviewUrl!;
+    final webviewTitle = section.webviewTitle!;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFFFF7A59)),
+              const SizedBox(width: 8),
+              Text(
+                section.title,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: widget.isDarkMode
+                      ? Colors.white
+                      : const Color(0xFF222222),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => WebViewPage(
+                  title: webviewTitle,
+                  url: webviewUrl,
+                  isDarkMode: widget.isDarkMode,
+                ),
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: CachedNetworkImage(
+                imageUrl: bannerImageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                placeholder: (_, __) => Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: widget.isDarkMode
+                        ? ThemeService.bgElev
+                        : const Color(0xFFF0F0F0),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: widget.isDarkMode
+                          ? [const Color(0xFF1a1d27), const Color(0xFF0f1117)]
+                          : [const Color(0xFFFFF7EE), const Color(0xFFFFE0CC)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      size: 48,
+                      color: const Color(0xFFFF7A59),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ─── News Section ──────────────────────────────────────────────

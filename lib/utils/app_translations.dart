@@ -23,6 +23,8 @@ class AppTranslations {
       'no_reps_found': 'No representatives found',
       'set_constituency': 'Set your constituency to see representatives',
       'local_news': 'Local News',
+      'noticeboard': 'Noticeboard',
+      'games': 'Games',
       'your_representatives': 'Your Representatives',
 
       // Search
@@ -336,6 +338,8 @@ class AppTranslations {
       'no_reps_found': 'कोई प्रतिनिधि नहीं मिला',
       'set_constituency': 'प्रतिनिधि देखने के लिए अपना निर्वाचन क्षेत्र सेट करें',
       'local_news': 'स्थानीय समाचार',
+      'noticeboard': 'सूचना पटल',
+      'games': 'खेल',
       'your_representatives': 'आपके प्रतिनिधि',
 
       'search': 'खोजें',
@@ -642,6 +646,8 @@ class AppTranslations {
       'no_reps_found': 'कोणताही प्रतिनिधी सापडला नाही',
       'set_constituency': 'प्रतिनिधी पाहण्यासाठी आपला मतदारसंघ सेट करा',
       'local_news': 'स्थानिक बातम्या',
+      'noticeboard': 'सूचनाफलक',
+      'games': 'खेळ',
       'your_representatives': 'तुमचे प्रतिनिधी',
 
       'search': 'शोधा',
@@ -948,6 +954,8 @@ class AppTranslations {
       'no_reps_found': 'பிரதிநிதிகள் இல்லை',
       'set_constituency': 'பிரதிநிதிகளைக் காண உங்கள் தொகுதியை அமைக்கவும்',
       'local_news': 'உள்ளூர் செய்திகள்',
+      'noticeboard': 'அறிவிப்பு பலகை',
+      'games': 'விளையாட்டுகள்',
       'your_representatives': 'உங்கள் பிரதிநிதிகள்',
 
       'search': 'தேடு',
@@ -1254,6 +1262,8 @@ class AppTranslations {
       'no_reps_found': 'ప్రతినిధులు కనుగొనబడలేదు',
       'set_constituency': 'ప్రతినిధులను చూడటానికి మీ నియోజకవర్గాన్ని సెట్ చేయండి',
       'local_news': 'స్థానిక వార్తలు',
+      'noticeboard': 'నోటీసు బోర్డు',
+      'games': 'ఆటలు',
       'your_representatives': 'మీ ప్రతినిధులు',
 
       'search': 'వెతుకు',
@@ -1560,6 +1570,8 @@ class AppTranslations {
       'no_reps_found': 'ಪ್ರತಿನಿಧಿಗಳು ಸಿಗಲಿಲ್ಲ',
       'set_constituency': 'ಪ್ರತಿನಿಧಿಗಳನ್ನು ನೋಡಲು ನಿಮ್ಮ ಕ್ಷೇತ್ರವನ್ನು ಹೊಂದಿಸಿ',
       'local_news': 'ಸ್ಥಳೀಯ ಸುದ್ದಿ',
+      'noticeboard': 'ಸೂಚನಾ ಫಲಕ',
+      'games': 'ಆಟಗಳು',
       'your_representatives': 'ನಿಮ್ಮ ಪ್ರತಿನಿಧಿಗಳು',
 
       'search': 'ಹುಡುಕಿ',
@@ -1867,6 +1879,8 @@ class AppTranslations {
       'no_reps_found': 'പ്രതിനിധികൾ കണ്ടെത്തിയില്ല',
       'set_constituency': 'പ്രതിനിധികളെ കാണാൻ നിങ്ങളുടെ മണ്ഡലം സെറ്റ് ചെയ്യുക',
       'local_news': 'പ്രാദേശിക വാർത്ത',
+      'noticeboard': 'നോട്ടീസ് ബോർഡ്',
+      'games': 'ഗെയിംസ്',
       'your_representatives': 'നിങ്ങളുടെ പ്രതിനിധികൾ',
 
       'search': 'തിരയുക',
@@ -2174,6 +2188,8 @@ class AppTranslations {
       'no_reps_found': 'কোনো প্রতিনিধি পাওয়া যায়নি',
       'set_constituency': 'প্রতিনিধি দেখতে আপনার নির্বাচনী এলাকা সেট করুন',
       'local_news': 'স্থানীয় সংবাদ',
+      'noticeboard': 'নোটিশবোর্ড',
+      'games': 'গেমস',
       'your_representatives': 'আপনার প্রতিনিধিরা',
 
       'search': 'খুঁজুন',
@@ -2481,6 +2497,8 @@ class AppTranslations {
       'no_reps_found': 'કોઈ પ્રતિનિધિ મળ્યા નથી',
       'set_constituency': 'પ્રતિનિધિઓ જોવા માટે તમારો મતવિસ્તાર સેટ કરો',
       'local_news': 'સ્થાનિક સમાચાર',
+      'noticeboard': 'નોટિસ બોર્ડ',
+      'games': 'ગેમ્સ',
       'your_representatives': 'તમારા પ્રતિનિધિઓ',
 
       'search': 'શોધો',
@@ -2788,6 +2806,8 @@ class AppTranslations {
       'no_reps_found': 'ਕੋਈ ਨੁਮਾਇੰਦਾ ਨਹੀਂ ਮਿਲਿਆ',
       'set_constituency': 'ਨੁਮਾਇੰਦੇ ਵੇਖਣ ਲਈ ਆਪਣਾ ਹਲਕਾ ਸੈੱਟ ਕਰੋ',
       'local_news': 'ਸਥਾਨਕ ਖ਼ਬਰਾਂ',
+      'noticeboard': 'ਨੋਟਿਸ ਬੋਰਡ',
+      'games': 'ਖੇਡਾਂ',
       'your_representatives': 'ਤੁਹਾਡੇ ਨੁਮਾਇੰਦੇ',
 
       'search': 'ਖੋਜੋ',

@@ -88,6 +88,7 @@ dependencies:
   firebase_app_installations: ^0.3.3
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
+  webview_flutter: ^4.10.0
   inditrans: ^0.12.1
 
   # ML Kit on-device translation (free, ~30 MB model download per language)
