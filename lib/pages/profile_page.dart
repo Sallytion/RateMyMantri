@@ -1,7 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../providers/theme_provider.dart';
+import '../providers/language_provider.dart';
 import 'google_sign_in_page.dart';
 import 'aadhar_verification_page.dart';
 import 'constituency_search_page.dart';
@@ -12,16 +15,11 @@ import '../services/constituency_service.dart';
 import '../services/constituency_notifier.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../config/api_config.dart';
 import '../models/constituency.dart';
+import '../widgets/language_sheet.dart';
 
 class ProfilePage extends StatefulWidget {
-  final bool isDarkMode;
-  final Function(bool) onDarkModeToggle;
-  final DarkModeOption darkModeOption;
-  final int accentColorIndex;
-  final Function(DarkModeOption) onDarkModeOptionChanged;
-  final Function(int) onAccentColorChanged;
-  final Function(String)? onLanguageChanged;
   final String userName;
   final bool isVerified;
   final String? userEmail;
@@ -30,13 +28,6 @@ class ProfilePage extends StatefulWidget {
 
   const ProfilePage({
     super.key,
-    required this.isDarkMode,
-    required this.onDarkModeToggle,
-    required this.darkModeOption,
-    required this.accentColorIndex,
-    required this.onDarkModeOptionChanged,
-    required this.onAccentColorChanged,
-    this.onLanguageChanged,
     required this.userName,
     required this.isVerified,
     this.userEmail,
@@ -53,16 +44,19 @@ class _ProfilePageState extends State<ProfilePage> {
   Constituency? _currentConstituency;
   bool _isLoadingConstituency = true;
 
+  /// Reads the current dark-mode flag from the provider.
+  bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
+
   Color get _backgroundColor =>
-      widget.isDarkMode ? ThemeService.bgMain : Colors.white;
+      isDarkMode ? ThemeService.bgMain : Colors.white;
   Color get _primaryText =>
-      widget.isDarkMode ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
+      isDarkMode ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
   Color get _secondaryText =>
-      widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+      isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
   Color get _cardBackground =>
-      widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFF7F7F7);
+      isDarkMode ? ThemeService.bgElev : const Color(0xFFF7F7F7);
   Color get _dividerColor =>
-      widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFEEEEEE);
+      isDarkMode ? ThemeService.bgElev : const Color(0xFFEEEEEE);
 
   @override
   void initState() {
@@ -102,7 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(
         builder: (context) => ConstituencySearchPage(
-          isDarkMode: widget.isDarkMode,
+          isDarkMode: isDarkMode,
           currentConstituency: _currentConstituency,
         ),
       ),
@@ -123,11 +117,11 @@ class _ProfilePageState extends State<ProfilePage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _CustomizationSheet(
-        isDarkMode: widget.isDarkMode,
-        darkModeOption: widget.darkModeOption,
-        accentColorIndex: widget.accentColorIndex,
-        onDarkModeOptionChanged: widget.onDarkModeOptionChanged,
-        onAccentColorChanged: widget.onAccentColorChanged,
+        isDarkMode: isDarkMode,
+        darkModeOption: this.context.read<ThemeProvider>().darkModeOption,
+        accentColorIndex: this.context.read<ThemeProvider>().accentColorIndex,
+        onDarkModeOptionChanged: this.context.read<ThemeProvider>().setDarkModeOption,
+        onAccentColorChanged: this.context.read<ThemeProvider>().setAccentColorIndex,
         cardBackground: _cardBackground,
         primaryText: _primaryText,
         secondaryText: _secondaryText,
@@ -140,13 +134,13 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _LanguageSheet(
-        isDarkMode: widget.isDarkMode,
+      builder: (context) => LanguageSheet(
+        isDarkMode: isDarkMode,
         cardBackground: _cardBackground,
         primaryText: _primaryText,
         secondaryText: _secondaryText,
         onLanguageChanged: (code) {
-          widget.onLanguageChanged?.call(code);
+          this.context.read<LanguageProvider>().setLanguage(code);
           setState(() {});
         },
       ),
@@ -155,6 +149,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    final isDarkMode = theme.isDarkMode;
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
@@ -170,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
-                    color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+                    color: isDarkMode ? Colors.white : const Color(0xFF222222),
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -297,7 +293,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               // My Contributions
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.fromLTRB(16.0, 20.0, 16.0, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -320,7 +316,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => RatePage(
-                              isDarkMode: widget.isDarkMode,
                               isVerified: widget.isVerified,
                             ),
                           ),
@@ -410,7 +405,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                     _buildListItem(
                       icon: Icons.palette_outlined,
-                      iconColor: ThemeService.accentColors[widget.accentColorIndex],
+                      iconColor: ThemeService.accentColors[context.read<ThemeProvider>().accentColorIndex],
                       title: LanguageService.tr('customization'),
                       subtitle: LanguageService.tr('theme_accent_dark'),
                       onTap: _showCustomizationSheet,
@@ -436,7 +431,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => SavedArticlesPage(
-                              isDarkMode: widget.isDarkMode,
+                              isDarkMode: isDarkMode,
                             ),
                           ),
                         );
@@ -523,12 +518,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: widget.isDarkMode
+                                        color: isDarkMode
                                             ? ThemeService.bgElev
                                             : const Color(0xFFF0F0F0),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: widget.isDarkMode
+                                          color: isDarkMode
                                               ? ThemeService.bgBorder
                                               : const Color(0xFFE0E0E0),
                                           width: 1,
@@ -586,7 +581,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             onPressed: () => Navigator.pop(context),
                                             style: TextButton.styleFrom(
                                               padding: const EdgeInsets.symmetric(vertical: 14),
-                                              backgroundColor: widget.isDarkMode
+                                              backgroundColor: isDarkMode
                                                   ? ThemeService.bgElev
                                                   : const Color(0xFFF0F0F0),
                                               shape: RoundedRectangleBorder(
@@ -608,7 +603,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           child: ElevatedButton(
                                             onPressed: () async {
                                               final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                              final isDark = widget.isDarkMode;
+                                              final isDark = isDarkMode;
                                               Navigator.pop(context);
                                               final Uri emailUri = Uri(
                                                 scheme: 'mailto',
@@ -673,7 +668,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       title: LanguageService.tr('legal_privacy'),
                       subtitle: LanguageService.tr('terms_data'),
                       onTap: () async {
-                        final uri = Uri.parse('https://ratemymantri.sallytion.qzz.io/privacypolicy');
+                        final uri = Uri.parse('${ApiConfig.baseUrl}/privacypolicy');
                         if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -786,7 +781,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           onPressed: () => Navigator.pop(context, false),
                                           style: TextButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(vertical: 14),
-                                            backgroundColor: widget.isDarkMode
+                                            backgroundColor: isDarkMode
                                                 ? ThemeService.bgElev
                                                 : const Color(0xFFF0F0F0),
                                             shape: RoundedRectangleBorder(
@@ -962,7 +957,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
-// ─── Customization Bottom Sheet ─────────────────────────────────────
+// â”€â”€â”€ Customization Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _CustomizationSheet extends StatefulWidget {
   final bool isDarkMode;
@@ -1040,7 +1035,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
           ),
           const SizedBox(height: 24),
 
-          // ── Accent Color ───────────────────────────
+          // â”€â”€ Accent Color â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Text(
             LanguageService.tr('accent_color'),
             style: TextStyle(
@@ -1096,7 +1091,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
 
           const SizedBox(height: 28),
 
-          // ── Dark Mode ──────────────────────────────
+          // â”€â”€ Dark Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Text(
             LanguageService.tr('appearance'),
             style: TextStyle(
@@ -1211,154 +1206,3 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
   }
 }
 
-// ─── Language Bottom Sheet ───────────────────────────────────────────
-
-class _LanguageSheet extends StatefulWidget {
-  final bool isDarkMode;
-  final Color cardBackground;
-  final Color primaryText;
-  final Color secondaryText;
-  final Function(String) onLanguageChanged;
-
-  const _LanguageSheet({
-    required this.isDarkMode,
-    required this.cardBackground,
-    required this.primaryText,
-    required this.secondaryText,
-    required this.onLanguageChanged,
-  });
-
-  @override
-  State<_LanguageSheet> createState() => _LanguageSheetState();
-}
-
-class _LanguageSheetState extends State<_LanguageSheet> {
-  late String _selectedCode;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedCode = LanguageService.languageCode;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = ThemeService.accent;
-    final languages = LanguageService.supportedLanguages;
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.65,
-      ),
-      decoration: BoxDecoration(
-        color: widget.cardBackground,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: widget.secondaryText.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            LanguageService.tr('language'),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: widget.primaryText,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            LanguageService.tr('choose_language'),
-            style: TextStyle(
-              fontSize: 13,
-              color: widget.secondaryText,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: languages.length,
-              separatorBuilder: (_, __) => Divider(
-                height: 1,
-                color: widget.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : Colors.black.withValues(alpha: 0.06),
-              ),
-              itemBuilder: (context, index) {
-                final lang = languages[index];
-                final code = lang['code']!;
-                final isSelected = code == _selectedCode;
-
-                return InkWell(
-                  onTap: () {
-                    setState(() => _selectedCode = code);
-                    widget.onLanguageChanged(code);
-                    Navigator.pop(context);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                lang['nativeName']!,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected
-                                      ? accent
-                                      : widget.primaryText,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                lang['name']!,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: widget.secondaryText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected
-                                  ? accent
-                                  : widget.secondaryText.withValues(alpha: 0.4),
-                              width: isSelected ? 6 : 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-}

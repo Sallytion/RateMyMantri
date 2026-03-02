@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/representative.dart';
 import '../models/representative_detail.dart';
+import '../config/api_config.dart';
+import '../config/api_client.dart';
 import 'cache_service.dart';
 import 'language_service.dart';
 
 class RepresentativeService {
-  static const String baseUrl = 'https://ratemymantri.sallytion.qzz.io/v2';
+  static String get baseUrl => ApiConfig.v2;
   static const Duration _cacheTtl = Duration(minutes: 5);
 
   Future<Map<String, dynamic>> searchRepresentatives(
@@ -31,7 +32,7 @@ class RepresentativeService {
           'lang': LanguageService.languageCode,
         },
       );
-      final response = await http.get(uri);
+      final response = await ApiClient.instance.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -77,7 +78,7 @@ class RepresentativeService {
           'lang': LanguageService.languageCode,
         },
       );
-      final response = await http.get(uri);
+      final response = await ApiClient.instance.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -149,7 +150,7 @@ class RepresentativeService {
       final uri = Uri.parse('$baseUrl/representatives/$id').replace(
         queryParameters: {'lang': LanguageService.languageCode},
       );
-      final response = await http.get(uri);
+      final response = await ApiClient.instance.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -5,13 +5,17 @@ import '../services/aadhar_qr_parser.dart';
 import '../services/aadhaar_verification_service.dart';
 import '../services/language_service.dart';
 import 'aadhar_result_page.dart';
-import 'main_screen.dart';
+import '../main.dart';
+import '../services/theme_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AadharVerificationPage extends StatefulWidget {
   final String userEmail;
   final String userName;
   final String userId;
   final String? photoUrl;
+  final VoidCallback? onComplete;
+  final bool isInline;
 
   const AadharVerificationPage({
     super.key,
@@ -19,6 +23,8 @@ class AadharVerificationPage extends StatefulWidget {
     required this.userName,
     required this.userId,
     this.photoUrl,
+    this.onComplete,
+    this.isInline = false,
   });
 
   @override
@@ -176,6 +182,7 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
             photoUrl: widget.photoUrl,
             rawQrData: rawValue, // Pass raw data
             backendVerified: verificationResult['success'] == true,
+            onComplete: widget.onComplete,
           ),
         ),
       );
@@ -190,265 +197,255 @@ class _AadharVerificationPageState extends State<AadharVerificationPage> {
   }
 
   void _skipVerification() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainScreen(
-          userName: widget.userName,
-          isVerified: false,
-          userEmail: widget.userEmail,
-          userId: widget.userId,
-          photoUrl: widget.photoUrl,
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AuthChecker(),
         ),
-      ),
-      (route) => false,
-    );
+        (route) => false,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF222222);
+    final secondaryTextColor = isDark ? Colors.white70 : const Color(0xFF717171);
+
+    final content = _isProcessing
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: ThemeService.accent),
+                const SizedBox(height: 16),
+                Text(
+                  LanguageService.tr('processing_qr'),
+                  style: TextStyle(color: primaryTextColor, fontSize: 16),
+                ),
+              ],
+            ),
+          )
+        : Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Icon
+              Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: ThemeService.accent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SvgPicture.asset(
+                      'lib/assets/logo/aadhaar.svg',
+                      colorFilter: ColorFilter.mode(ThemeService.accent, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              Text(
+                LanguageService.tr('scan_aadhar_qr'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: primaryTextColor,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Text(
+                LanguageService.tr('photo_or_gallery'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: secondaryTextColor,
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Information Box
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFE5E5E5)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.security_rounded, size: 20, color: Colors.green),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Aadhar is only used to verify reviews. No aadhar data is stored on the server.",
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(height: 1, thickness: 1, color: isDark ? const Color(0xFF333333) : const Color(0xFFE5E5E5)),
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 20, color: Colors.orange.shade400),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Scan the physical Aadhar card. Digilocker Aadhar QR codes may not work.",
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Camera button
+              SizedBox(
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _scanFromCamera,
+                  icon: const Icon(Icons.camera_alt_rounded, size: 22),
+                  label: Text(LanguageService.tr('take_photo')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ThemeService.accent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Gallery button
+              SizedBox(
+                height: 56,
+                child: OutlinedButton.icon(
+                  onPressed: _scanFromGallery,
+                  icon: const Icon(Icons.photo_library_rounded, size: 22),
+                  label: Text(LanguageService.tr('choose_gallery')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryTextColor,
+                    side: BorderSide(color: isDark ? Colors.white24 : Colors.black12, width: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ),
+
+              if (widget.isInline) ...[
+                const SizedBox(height: 32),
+                TextButton(
+                  onPressed: _skipVerification,
+                  child: Text(
+                    LanguageService.tr('skip_continue_guest'),
+                    style: TextStyle(
+                      color: secondaryTextColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+
+    if (widget.isInline) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            child: content,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           LanguageService.tr('verification'),
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+            color: primaryTextColor,
+          ),
         ),
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: primaryTextColor,
         elevation: 0,
         scrolledUnderElevation: 0,
-        leading: const BackButton(),
+        leading: BackButton(color: primaryTextColor),
         actions: [
           TextButton(
             onPressed: _skipVerification,
             child: Text(
               LanguageService.tr('skip'),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
+              style: TextStyle(
+                color: secondaryTextColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
               ),
             ),
           ),
         ],
       ),
       body: SafeArea(
-        child: _isProcessing
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(color: Colors.white),
-                    const SizedBox(height: 16),
-                    Text(
-                      LanguageService.tr('processing_qr'),
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ],
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Icon
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      child: const Icon(
-                        Icons.qr_code_scanner,
-                        size: 50,
-                        color: Colors.white,
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Text(
-                      LanguageService.tr('scan_aadhar_qr'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Text(
-                      LanguageService.tr('photo_or_gallery'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Camera button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton.icon(
-                        onPressed: _scanFromCamera,
-                        icon: const Icon(Icons.camera_alt, size: 24),
-                        label: Text(LanguageService.tr('take_photo')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6C63FF),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Gallery button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: OutlinedButton.icon(
-                        onPressed: _scanFromGallery,
-                        icon: const Icon(Icons.photo_library, size: 24),
-                        label: Text(LanguageService.tr('choose_gallery')),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(
-                            color: Colors.white54,
-                            width: 2,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Info cards
-                    _buildInfoCard(
-                      Icons.check_circle,
-                      Colors.green,
-                      LanguageService.tr('secure'),
-                      LanguageService.tr('secure_desc'),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildInfoCard(
-                      Icons.warning,
-                      Colors.orange,
-                      LanguageService.tr('unsecure'),
-                      LanguageService.tr('unsecure_desc'),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Tip
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.lightbulb,
-                            color: Colors.blue,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              LanguageService.tr('camera_tip'),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Skip button
-                    TextButton(
-                      onPressed: _skipVerification,
-                      child: Text(
-                        LanguageService.tr('skip_continue_guest'),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildInfoCard(
-    IconData icon,
-    Color color,
-    String title,
-    String subtitle,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: content,
+        ),
       ),
     );
   }

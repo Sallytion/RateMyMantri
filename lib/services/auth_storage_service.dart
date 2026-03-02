@@ -1,45 +1,45 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
+import 'prefs_service.dart';
 import 'dart:convert';
+import '../config/api_config.dart';
+import '../config/api_client.dart';
 
 class AuthStorageService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userDataKey = 'user_data';
   static const String _aadhaarVerifiedKey = 'aadhaar_verified';
-  static const String _baseUrl = 'https://ratemymantri.sallytion.qzz.io';
 
   // Save tokens after successful authentication
   static Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     await prefs.setString(_accessTokenKey, accessToken);
     await prefs.setString(_refreshTokenKey, refreshToken);
   }
 
   // Save user data
   static Future<void> saveUserData(Map<String, dynamic> userData) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     await prefs.setString(_userDataKey, json.encode(userData));
   }
 
   // Get access token
   static Future<String?> getAccessToken() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     return prefs.getString(_accessTokenKey);
   }
 
   // Get refresh token
   static Future<String?> getRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     return prefs.getString(_refreshTokenKey);
   }
 
   // Get user data
   static Future<Map<String, dynamic>?> getUserData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     final userDataString = prefs.getString(_userDataKey);
     if (userDataString != null) {
       return json.decode(userDataString) as Map<String, dynamic>;
@@ -55,19 +55,19 @@ class AuthStorageService {
 
   // Save Aadhaar verification status
   static Future<void> saveAadhaarVerificationStatus(bool isVerified) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     await prefs.setBool(_aadhaarVerifiedKey, isVerified);
   }
 
   // Get Aadhaar verification status from local storage
   static Future<bool> getAadhaarVerificationStatus() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     return prefs.getBool(_aadhaarVerifiedKey) ?? false;
   }
 
   // Clear all auth data (for logout)
   static Future<void> clearAuthData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     // Clear only auth-specific keys (preserve cached city, saved articles, etc.)
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
@@ -101,8 +101,8 @@ class AuthStorageService {
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse('https://ratemymantri.sallytion.qzz.io/auth/refresh'),
+      final response = await ApiClient.instance.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/refresh'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'refreshToken': refreshToken}),
       );
@@ -177,8 +177,8 @@ class AuthStorageService {
         return null;
       }
 
-      final response = await http.get(
-        Uri.parse('$_baseUrl/me'),
+      final response = await ApiClient.instance.get(
+        Uri.parse('${ApiConfig.baseUrl}/me'),
         headers: {
           'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',

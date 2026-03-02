@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
+import '../utils/formatters.dart';
 import '../services/saved_articles_service.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
@@ -61,25 +61,7 @@ class _SavedArticlesPageState extends State<SavedArticlesPage> {
   }
 
   String _formatDate(String dateStr) {
-    try {
-      final parsedDate = DateFormat('EEE, dd MMM yyyy HH:mm:ss Z').parse(dateStr);
-      final istDate = parsedDate.add(const Duration(hours: 5, minutes: 30));
-      final now = DateTime.now();
-      final difference = now.difference(istDate);
-
-      if (difference.inDays == 0) {
-        if (difference.inHours == 0) {
-          return '${difference.inMinutes}m ago';
-        }
-        return '${difference.inHours}h ago';
-      } else if (difference.inDays < 7) {
-        return '${difference.inDays}d ago';
-      } else {
-        return DateFormat('MMM dd, yyyy').format(istDate);
-      }
-    } catch (e) {
-      return dateStr;
-    }
+    return Formatters.formatPubDate(dateStr);
   }
 
   @override

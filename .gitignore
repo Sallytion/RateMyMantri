@@ -58,3 +58,6 @@ lib/firebase_options.dart
 # Notification scripts with tokens
 send_notification.ps1
 **/*_notification*.ps1
+
+# Design assets (build-time only, not needed in repo)
+design_assets/

@@ -1,11 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:xml/xml.dart' as xml;
-import 'package:intl/intl.dart';
-import 'package:ip_detector/ip_detector.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../utils/formatters.dart';
+import '../utils/location_service.dart';
+import '../utils/party_utils.dart';
 import '../models/constituency.dart';
 import '../models/home_section.dart';
 import '../models/representative.dart';
@@ -41,11 +44,9 @@ class _HomeArticle {
 }
 
 class HomePage extends StatefulWidget {
-  final bool isDarkMode;
   final void Function(int)? onNavigateToTab;
-  final String languageCode;
 
-  const HomePage({super.key, required this.isDarkMode, this.onNavigateToTab, required this.languageCode});
+  const HomePage({super.key, this.onNavigateToTab});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -57,7 +58,11 @@ class _HomePageState extends State<HomePage> {
   final GoogleNewsDecoder _newsDecoder = GoogleNewsDecoder();
   final ArticleExtractor _articleExtractor = ArticleExtractor();
 
-  // ─── Static in-memory cache (survives widget rebuilds) ─────────
+  /// Reads the current dark-mode flag from the provider.
+  /// build() calls context.watch to subscribe; helpers use this getter.
+  bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
+
+  // â”€â”€â”€ Static in-memory cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static Constituency? _cachedConstituency;
   static List<Representative>? _cachedRepresentatives;
   static List<_HomeArticle>? _cachedNewsArticles;
@@ -74,6 +79,7 @@ class _HomePageState extends State<HomePage> {
   List<Representative> _representatives = [];
   bool _isLoadingRepresentatives = true;
   final PageController _repPageController = PageController(viewportFraction: 1.0);
+  final ScrollController _dotScrollController = ScrollController();
   int _currentRepIndex = 0;
 
   // News
@@ -98,8 +104,7 @@ class _HomePageState extends State<HomePage> {
       _isLoadingNews = false;
     }
 
-    _loadCurrentConstituency();
-    _loadLocalNews();
+    _loadCurrentConstituency().then((_) => _loadLocalNews());
     _loadHomeSections();
 
     // Listen for constituency changes made on the Profile page
@@ -109,41 +114,27 @@ class _HomePageState extends State<HomePage> {
   void _onConstituencyNotified() {
     final c = ConstituencyNotifier.instance.current;
     if (c == null || c.id == _currentConstituency?.id) return;
-    // We already have the full Constituency object — apply immediately,
+    // We already have the full Constituency object â€” apply immediately,
     // no API round-trip needed.
     _cachedConstituency = c;
     _cachedRepresentatives = null;
+    // Constituency changed â€” also invalidate news cache so we fetch for new area
+    _cachedNewsArticles = null;
+    _newsFetchedThisSession = false;
     setState(() {
       _currentConstituency = c;
       _isLoadingConstituency = false;
       _isLoadingRepresentatives = true;
     });
     _loadRepresentatives(c.nameEn);
-  }
-
-  @override
-  void didUpdateWidget(covariant HomePage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.languageCode != widget.languageCode ||
-        oldWidget.isDarkMode != widget.isDarkMode) {
-      // Language or theme changed — clear all caches and re-fetch
-      _cachedNewsArticles = null;
-      _newsFetchedThisSession = false;
-      _cachedRepresentatives = null;
-      _loadLocalNews();
-      // Re-fetch representatives with the new language
-      if (_currentConstituency != null) {
-        _loadRepresentatives(_currentConstituency!.nameEn);
-      }
-      // Re-fetch sections with updated lang/theme
-      HomeSectionsService.clearAll().then((_) => _loadHomeSections());
-    }
+    _loadLocalNews();
   }
 
   @override
   void dispose() {
     ConstituencyNotifier.instance.notifier.removeListener(_onConstituencyNotified);
     _repPageController.dispose();
+    _dotScrollController.dispose();
     super.dispose();
   }
 
@@ -176,6 +167,12 @@ class _HomePageState extends State<HomePage> {
 
     _cachedConstituency = constituency;
 
+    // Populate the global notifier so other pages (e.g. NewsPage) can read it
+    if (constituency != null &&
+        ConstituencyNotifier.instance.current?.id != constituency.id) {
+      ConstituencyNotifier.instance.set(constituency);
+    }
+
     if (shouldLoadReps) {
       _loadRepresentatives(constituency!.nameEn);
     }
@@ -195,36 +192,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<Map<String, String>?> _getCityFromIp({int ttlSeconds = 86400}) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final ts = prefs.getInt('geo_ts') ?? 0;
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      if (now - ts < ttlSeconds) {
-        final city = prefs.getString('geo_city');
-        final country = prefs.getString('geo_country');
-        if (city != null && country != null) {
-          return {'city': city, 'country': country};
-        }
-      }
-
-      final ipDetector = IpDetector(timeout: const Duration(seconds: 10));
-      final response = await ipDetector.fetch(enableLog: false);
-
-      if (response.type == IpDetectorResponseType.succeedResponse) {
-        final city = ipDetector.city()?.trim();
-        final country = ipDetector.countryCode()?.trim();
-
-        if (city != null && city.isNotEmpty && country != null && country.isNotEmpty) {
-          await prefs.setString('geo_city', city);
-          await prefs.setString('geo_country', country);
-          await prefs.setInt('geo_ts', now);
-          return {'city': city, 'country': country};
-        }
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
+    return LocationService.instance.getCityFromIp(ttlSeconds: ttlSeconds);
   }
 
   Future<void> _loadLocalNews() async {
@@ -239,17 +207,26 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _isLoadingNews = true);
     try {
-      final loc = await _getCityFromIp();
       String url;
-      if (loc != null) {
-        final city = Uri.encodeComponent(loc['city']!);
-        final countryCode = loc['country']!;
-        final params = countryCode == 'IN'
-            ? LanguageService.newsGlParams
-            : 'hl=en-US&gl=$countryCode&ceid=$countryCode:en';
-        url = 'https://news.google.com/rss/search?q=$city&$params';
+
+      // Primary: use the set constituency name for local news
+      final constituency = _currentConstituency ?? _cachedConstituency;
+      if (constituency != null) {
+        final query = Uri.encodeComponent(constituency.nameEn);
+        url = 'https://news.google.com/rss/search?q=$query&${LanguageService.newsGlParams}';
       } else {
-        url = 'https://news.google.com/rss?${LanguageService.newsGlParams}';
+        // Fallback: use IP-based city detection
+        final loc = await _getCityFromIp();
+        if (loc != null) {
+          final city = Uri.encodeComponent(loc['city']!);
+          final countryCode = loc['country']!;
+          final params = countryCode == 'IN'
+              ? LanguageService.newsGlParams
+              : 'hl=en-US&gl=$countryCode&ceid=$countryCode:en';
+          url = 'https://news.google.com/rss/search?q=$city&$params';
+        } else {
+          url = 'https://news.google.com/rss?${LanguageService.newsGlParams}';
+        }
       }
 
       final res = await http.get(Uri.parse(url));
@@ -329,23 +306,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _formatDate(String pubDate) {
-    try {
-      final date = DateFormat('EEE, dd MMM yyyy HH:mm:ss zzz').parseUtc(pubDate);
-      final now = DateTime.now().toUtc();
-      final diff = now.difference(date);
-
-      if (diff.inDays == 0) {
-        if (diff.inHours == 0) return '${diff.inMinutes}m ago';
-        return '${diff.inHours}h ago';
-      } else if (diff.inDays < 7) {
-        return '${diff.inDays}d ago';
-      } else {
-        final ist = date.add(const Duration(hours: 5, minutes: 30));
-        return '${ist.day}/${ist.month}/${ist.year}';
-      }
-    } catch (_) {
-      return pubDate;
-    }
+    return Formatters.formatPubDate(pubDate);
   }
 
   Future<void> _navigateToConstituencySearch() async {
@@ -353,7 +314,7 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(
         builder: (context) => ConstituencySearchPage(
-          isDarkMode: widget.isDarkMode,
+          isDarkMode: isDarkMode,
           currentConstituency: _currentConstituency,
         ),
       ),
@@ -364,54 +325,31 @@ class _HomePageState extends State<HomePage> {
         _currentConstituency = result;
       });
       _cachedConstituency = result;
-      // Constituency changed — invalidate representative cache and refetch
+      // Constituency changed â€” invalidate representative cache and refetch
       _cachedRepresentatives = null;
       _loadRepresentatives(result.nameEn);
+      // Constituency changed â€” also invalidate news cache and refetch
+      _cachedNewsArticles = null;
+      _newsFetchedThisSession = false;
+      _loadLocalNews();
       // Notify ProfilePage (and any other listeners) of the change
       ConstituencyNotifier.instance.set(result);
     }
   }
 
   String _getOfficeLabel(String officeType) {
-    switch (officeType) {
-      case 'LOK_SABHA':
-        return LanguageService.tr('member_of_parliament');
-      case 'STATE_ASSEMBLY':
-        return LanguageService.tr('mla');
-      case 'RAJYA_SABHA':
-        return LanguageService.tr('rajya_sabha_mp');
-      case 'VIDHAN_PARISHAD':
-        return LanguageService.tr('mlc');
-      default:
-        return officeType;
-    }
+    return PartyUtils.getOfficeLabel(officeType);
   }
 
   Color _getPartyColor(String party) {
-    switch (party.toUpperCase()) {
-      case 'BJP':
-        return const Color(0xFFFF9933);
-      case 'INC':
-        return const Color(0xFF19AAED);
-      case 'AAP':
-        return const Color(0xFF0066B3);
-      case 'TMC':
-        return const Color(0xFF00A651);
-      case 'DMK':
-        return const Color(0xFFE71C23);
-      case 'SP':
-        return const Color(0xFFE40612);
-      case 'BSP':
-        return const Color(0xFF22409A);
-      default:
-        return const Color(0xFF5A5A5A);
-    }
+    return PartyUtils.getPartyColor(party);
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
     return Scaffold(
-      backgroundColor: widget.isDarkMode
+      backgroundColor: isDarkMode
           ? ThemeService.bgMain
           : const Color(0xFFF7F7F7),
       body: SafeArea(
@@ -429,7 +367,7 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w600,
-                        color: widget.isDarkMode
+                        color: isDarkMode
                             ? Colors.white
                             : const Color(0xFF222222),
                         letterSpacing: -0.3,
@@ -443,7 +381,7 @@ class _HomePageState extends State<HomePage> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: widget.isDarkMode
+                          color: isDarkMode
                               ? ThemeService.bgElev
                               : const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(20),
@@ -454,14 +392,14 @@ class _HomePageState extends State<HomePage> {
                             Icon(
                               Icons.location_on_outlined,
                               size: 15,
-                              color: widget.isDarkMode
+                              color: isDarkMode
                                   ? const Color(0xFFB0B0B0)
                                   : const Color(0xFF717171),
                             ),
                             const SizedBox(width: 4),
                             _isLoadingConstituency
                                 ? SkeletonShimmer(
-                                    isDarkMode: widget.isDarkMode,
+                                    isDarkMode: isDarkMode,
                                     child: SkeletonBox(
                                       width: 70,
                                       height: 13,
@@ -475,7 +413,7 @@ class _HomePageState extends State<HomePage> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
-                                      color: widget.isDarkMode
+                                      color: isDarkMode
                                           ? const Color(0xFFB0B0B0)
                                           : const Color(0xFF717171),
                                     ),
@@ -484,7 +422,7 @@ class _HomePageState extends State<HomePage> {
                             Icon(
                               Icons.keyboard_arrow_down,
                               size: 16,
-                              color: widget.isDarkMode
+                              color: isDarkMode
                                   ? const Color(0xFFB0B0B0)
                                   : const Color(0xFF717171),
                             ),
@@ -505,7 +443,7 @@ class _HomePageState extends State<HomePage> {
             // Local News Section (returns List<Widget> of slivers)
             ..._buildNewsSlivers(),
 
-            // API-driven banner sections (Noticeboard, Games, …)
+            // API-driven banner sections (Noticeboard, Games, â€¦)
             ..._buildApiSections(),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -515,11 +453,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ─── Representatives Swipable Cards ────────────────────────────
+  // â”€â”€â”€ Representatives Swipable Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildRepresentativesSection() {
     if (_isLoadingRepresentatives) {
-      return RepresentativeListSkeleton(isDarkMode: widget.isDarkMode);
+      return RepresentativeListSkeleton(isDarkMode: isDarkMode);
     }
 
     if (_representatives.isEmpty) {
@@ -575,6 +513,7 @@ class _HomePageState extends State<HomePage> {
             itemCount: _representatives.length,
             onPageChanged: (index) {
               setState(() => _currentRepIndex = index);
+              _scrollDotsToActive(index);
             },
             itemBuilder: (context, index) {
               return Padding(
@@ -586,28 +525,88 @@ class _HomePageState extends State<HomePage> {
         ),
         if (_representatives.length > 1) ...[
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _representatives.length,
-              (index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: _currentRepIndex == index ? 24 : 8,
-                decoration: BoxDecoration(
-                  color: _currentRepIndex == index
-                      ? const Color(0xFFFF7A59)
-                      : (widget.isDarkMode
-                          ? const Color(0xFF4A4A4A)
-                          : const Color(0xFFDDDDDD)),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
+          _buildRepDots(),
         ],
       ],
+    );
+  }
+
+  /// Smoothly scrolls the dot strip to keep the active dot centered.
+  void _scrollDotsToActive(int index) {
+    if (!_dotScrollController.hasClients) return;
+    // Each dot slot is 16px wide (8px dot + 4px margin each side).
+    const double slotW = 16.0;
+    const double visibleW = 7 * slotW; // 112px viewport
+    final double target = (index * slotW) - (visibleW / 2) + (slotW / 2);
+    final double maxScroll = _dotScrollController.position.maxScrollExtent;
+    _dotScrollController.animateTo(
+      target.clamp(0.0, maxScroll),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  /// Dot indicator: renders ALL dots in a clipped scrollable row.
+  /// The strip scrolls (via [_dotScrollController]) so the active dot
+  /// is always centered â€” giving a true sliding animation.
+  Widget _buildRepDots() {
+    final int total = _representatives.length;
+    if (total <= 1) return const SizedBox.shrink();
+
+    // Fixed layout slot per dot so scroll math is exact.
+    const double slotW = 16.0;   // 8px dot + 4px margin each side
+    const double dotH  = 8.0;
+    const double activeDotW   = 24.0;
+    const double inactiveDotW = 8.0;
+    const int    maxVisible   = 7;
+    const double viewportW    = maxVisible * slotW; // 112px
+
+    Widget buildDot(int i) {
+      final bool isActive = i == _currentRepIndex;
+      return SizedBox(
+        width: slotW,
+        height: dotH,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            height: dotH,
+            width: isActive ? activeDotW : inactiveDotW,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? const Color(0xFFFF7A59)
+                  : (isDarkMode
+                      ? const Color(0xFF4A4A4A)
+                      : const Color(0xFFDDDDDD)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // â‰¤ 7 reps: just a plain row, no scrolling needed.
+    if (total <= maxVisible) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(total, buildDot),
+      );
+    }
+
+    // > 7 reps: clipped scrollable strip.
+    return SizedBox(
+      width: viewportW,
+      height: dotH,
+      child: ClipRect(
+        child: SingleChildScrollView(
+          controller: _dotScrollController,
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          child: Row(
+            children: List.generate(total, buildDot),
+          ),
+        ),
+      ),
     );
   }
 
@@ -680,51 +679,63 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           // Content
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
+          ClipRect(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.max,
               children: [
                 // Party badge + Office type
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _safeTranslit(rep.party),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 120),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _safeTranslit(rep.party),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      officeLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w500,
+                    Flexible(
+                      child: Text(
+                        officeLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 // Name
                 Text(
                   _safeTranslit(_formatRepName(rep.fullName)),
                   style: const TextStyle(
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 // Constituency
@@ -734,24 +745,26 @@ class _HomePageState extends State<HomePage> {
                     fontSize: 13,
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 // Rating
                 Row(
                   children: [
                     Text(
                       rating != null ? rating.toStringAsFixed(1) : 'N/A',
                       style: const TextStyle(
-                        fontSize: 28,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                     const SizedBox(width: 8),
                     if (rating != null) ...[
-                      ...List.generate(fullStars, (_) => const Icon(Icons.star, color: Colors.amber, size: 18)),
-                      if (hasHalfStar) const Icon(Icons.star_half, color: Colors.amber, size: 18),
-                      ...List.generate(emptyStars, (_) => const Icon(Icons.star_border, color: Colors.amber, size: 18)),
+                      ...List.generate(fullStars, (_) => const Icon(Icons.star, color: Colors.amber, size: 16)),
+                      if (hasHalfStar) const Icon(Icons.star_half, color: Colors.amber, size: 16),
+                      ...List.generate(emptyStars, (_) => const Icon(Icons.star_border, color: Colors.amber, size: 16)),
                       const SizedBox(width: 6),
                       Text(
                         '(${rep.totalRatings ?? 0})',
@@ -771,7 +784,7 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 // Buttons
                 Row(
                   children: [
@@ -782,7 +795,7 @@ class _HomePageState extends State<HomePage> {
                           MaterialPageRoute(
                             builder: (context) => RepresentativeDetailPage(
                               representativeId: rep.id.toString(),
-                              isDarkMode: widget.isDarkMode,
+                              isDarkMode: isDarkMode,
                             ),
                           ),
                         );
@@ -791,14 +804,16 @@ class _HomePageState extends State<HomePage> {
                         backgroundColor: Colors.white,
                         foregroundColor: partyColor,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       child: Text(
                         LanguageService.tr('rate_performance'),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -806,6 +821,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
+        ),
         ],
       ),
     );
@@ -815,9 +831,7 @@ class _HomePageState extends State<HomePage> {
   /// Once the backend adds ?lang= support to /v2/my-representatives,
   /// it will return non-ASCII text and this becomes a no-op.
   String _safeTranslit(String text) {
-    if (text.isEmpty || LanguageService.isEnglish) return text;
-    if (text.runes.any((r) => r > 127)) return text; // already transliterated
-    return LanguageService.translitName(text);
+    return PartyUtils.safeTranslit(text);
   }
 
   String _formatRepName(String name) {
@@ -828,14 +842,14 @@ class _HomePageState extends State<HomePage> {
     }).join(' ');
   }
 
-  // ─── API-driven Banner Sections ──────────────────────────────────
+  // â”€â”€â”€ API-driven Banner Sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /// Fetches sections from the backend and stores them in state.
   Future<void> _loadHomeSections() async {
     if (!mounted) return;
     setState(() => _isLoadingSections = true);
 
-    final theme = widget.isDarkMode ? 'dark' : 'light';
+    final theme = isDarkMode ? 'dark' : 'light';
     final lang = LanguageService.languageCode;
 
     final sections = await HomeSectionsService.fetchSections(
@@ -891,7 +905,7 @@ class _HomePageState extends State<HomePage> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: SkeletonShimmer(
-              isDarkMode: widget.isDarkMode,
+              isDarkMode: isDarkMode,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -930,7 +944,7 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       }
-      // Unknown types are silently skipped (per §11 of the spec)
+      // Unknown types are silently skipped (per Â§11 of the spec)
     }
     return slivers;
   }
@@ -938,9 +952,28 @@ class _HomePageState extends State<HomePage> {
   /// Renders a single `webview_banner` section card.
   Widget _buildWebviewBannerCard(HomeSection section) {
     final icon = _iconFromString(section.icon);
-    final bannerImageUrl = section.bannerImageUrl!;
-    final webviewUrl = section.webviewUrl!;
     final webviewTitle = section.webviewTitle!;
+
+    // Append lang & theme to the webview URL so the page opens in the correct language
+    final rawWebviewUri = Uri.parse(section.webviewUrl!);
+    final finalWebviewUrl = rawWebviewUri.replace(
+      queryParameters: {
+        ...rawWebviewUri.queryParameters,
+        'lang': LanguageService.languageCode,
+        'theme': isDarkMode ? 'dark' : 'light',
+      },
+    ).toString();
+
+    // Append lang & theme so the backend returns the correctly
+    // localized / themed banner image.
+    final rawBannerUri = Uri.parse(section.bannerImageUrl!);
+    final bannerImageUrl = rawBannerUri.replace(
+      queryParameters: {
+        ...rawBannerUri.queryParameters,
+        'lang': LanguageService.languageCode,
+        'theme': isDarkMode ? 'dark' : 'light',
+      },
+    ).toString();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -956,7 +989,7 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: widget.isDarkMode
+                  color: isDarkMode
                       ? Colors.white
                       : const Color(0xFF222222),
                 ),
@@ -970,8 +1003,8 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(
                 builder: (_) => WebViewPage(
                   title: webviewTitle,
-                  url: webviewUrl,
-                  isDarkMode: widget.isDarkMode,
+                  url: finalWebviewUrl,
+                  isDarkMode: isDarkMode,
                 ),
               ),
             ),
@@ -984,7 +1017,7 @@ class _HomePageState extends State<HomePage> {
                 placeholder: (_, __) => Container(
                   height: 160,
                   decoration: BoxDecoration(
-                    color: widget.isDarkMode
+                    color: isDarkMode
                         ? ThemeService.bgElev
                         : const Color(0xFFF0F0F0),
                     borderRadius: BorderRadius.circular(16),
@@ -994,7 +1027,7 @@ class _HomePageState extends State<HomePage> {
                   height: 160,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: widget.isDarkMode
+                      colors: isDarkMode
                           ? [const Color(0xFF1a1d27), const Color(0xFF0f1117)]
                           : [const Color(0xFFFFF7EE), const Color(0xFFFFE0CC)],
                     ),
@@ -1016,7 +1049,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ─── News Section ──────────────────────────────────────────────
+  // â”€â”€â”€ News Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   List<Widget> _buildNewsSlivers() {
     return [
@@ -1027,16 +1060,20 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                LanguageService.tr('local_news'),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: widget.isDarkMode
-                      ? Colors.white
-                      : const Color(0xFF222222),
+              Flexible(
+                child: Text(
+                  LanguageService.tr('local_news'),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode
+                        ? Colors.white
+                        : const Color(0xFF222222),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   // Navigate to News tab (index 3)
@@ -1068,7 +1105,7 @@ class _HomePageState extends State<HomePage> {
       const SliverToBoxAdapter(child: SizedBox(height: 12)),
       if (_isLoadingNews)
         SliverToBoxAdapter(
-          child: NewsListSkeleton(isDarkMode: widget.isDarkMode),
+          child: NewsListSkeleton(isDarkMode: isDarkMode),
         )
       else if (_newsArticles.isEmpty)
         SliverToBoxAdapter(
@@ -1077,14 +1114,14 @@ class _HomePageState extends State<HomePage> {
             child: Container(
               height: 100,
               decoration: BoxDecoration(
-                color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
+                color: isDarkMode ? ThemeService.bgElev : Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
                   LanguageService.tr('no_news_available'),
                   style: TextStyle(
-                    color: widget.isDarkMode ? Colors.white54 : Colors.grey,
+                    color: isDarkMode ? Colors.white54 : Colors.grey,
                   ),
                 ),
               ),
@@ -1117,6 +1154,11 @@ class _HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: () {
         final url = article.decodedUrl ?? article.link;
+        // If article text couldn't be extracted, open link directly
+        if (article.articleText == null || article.articleText!.isEmpty) {
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1127,18 +1169,18 @@ class _HomePageState extends State<HomePage> {
               source: article.source,
               pubDate: article.pubDate,
               originalUrl: url,
-              isDarkMode: widget.isDarkMode,
+              isDarkMode: isDarkMode,
             ),
           ),
         );
       },
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
+          color: isDarkMode ? ThemeService.bgElev : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -1172,7 +1214,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       )
                     : Container(
-                        color: widget.isDarkMode ? ThemeService.bgBorder : const Color(0xFFE0E0E0),
+                        color: isDarkMode ? ThemeService.bgBorder : const Color(0xFFE0E0E0),
                         child: const Icon(Icons.article, color: Color(0xFFBDBDBD), size: 32),
                       ),
               ),
@@ -1199,7 +1241,7 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: widget.isDarkMode
+                        color: isDarkMode
                             ? Colors.white
                             : const Color(0xFF222222),
                       ),
@@ -1211,7 +1253,7 @@ class _HomePageState extends State<HomePage> {
                       _formatDate(article.pubDate),
                       style: TextStyle(
                         fontSize: 12,
-                        color: widget.isDarkMode
+                        color: isDarkMode
                             ? const Color(0xFF717171)
                             : const Color(0xFF999999),
                       ),
@@ -1225,7 +1267,7 @@ class _HomePageState extends State<HomePage> {
               child: Icon(
                 Icons.chevron_right,
                 size: 20,
-                color: widget.isDarkMode ? Colors.white38 : Colors.grey,
+                color: isDarkMode ? Colors.white38 : Colors.grey,
               ),
             ),
           ],

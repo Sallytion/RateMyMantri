@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'prefs_service.dart';
 
 /// Supported dark mode options.
 enum DarkModeOption {
@@ -61,7 +61,7 @@ class ThemeService {
 
   /// Load saved dark mode preference. Defaults to [DarkModeOption.system].
   static Future<DarkModeOption> loadDarkMode() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     final index = prefs.getInt(_darkModeKey) ?? 0;
     if (index >= 0 && index < DarkModeOption.values.length) {
       return DarkModeOption.values[index];
@@ -71,19 +71,19 @@ class ThemeService {
 
   /// Persist dark mode preference.
   static Future<void> saveDarkMode(DarkModeOption option) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     await prefs.setInt(_darkModeKey, option.index);
   }
 
   /// Load saved accent color index. Defaults to 0 (Rose).
   static Future<int> loadAccentColorIndex() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     return prefs.getInt(_accentColorKey) ?? 0;
   }
 
   /// Persist accent color index.
   static Future<void> saveAccentColorIndex(int index) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     await prefs.setInt(_accentColorKey, index);
   }
 

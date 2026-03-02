@@ -1,5 +1,5 @@
 import 'package:inditrans/inditrans.dart' as inditrans;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'prefs_service.dart';
 import '../utils/app_translations.dart';
 
 class LanguageService {
@@ -13,16 +13,18 @@ class LanguageService {
   static Future<void> init() async {
     if (_initialized) return;
     await inditrans.init();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     _languageCode = prefs.getString('app_language') ?? 'en';
+    await AppTranslations.ensureLoaded(_languageCode);
     _initialized = true;
   }
 
   /// Change the app language and persist
   static Future<void> setLanguage(String code) async {
     _languageCode = code;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     await prefs.setString('app_language', code);
+    await AppTranslations.ensureLoaded(code);
     // Clear transliteration cache when language changes
     _translitCache.clear();
     _reverseTranslitCache.clear();

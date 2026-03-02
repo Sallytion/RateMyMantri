@@ -10,6 +10,8 @@ import '../services/auth_storage_service.dart';
 import '../services/prefetch_service.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../utils/formatters.dart';
+import '../utils/widgets/placeholder_avatar.dart';
 import '../widgets/rating_form_widget.dart';
 import '../widgets/ratings_display_widget.dart';
 import '../widgets/skeleton_widgets.dart';
@@ -318,10 +320,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   }
 
   Widget _buildPlaceholderAvatar() {
-    return Container(
-      color: Colors.grey[300],
-      child: Icon(Icons.person, size: 70, color: Colors.grey[600]),
-    );
+    return PlaceholderAvatar(name: _detail?.name ?? '');
   }
 
   Widget _buildStats(Color textColor, Color cardColor) {
@@ -662,15 +661,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   }
 
   String _formatCurrency(int amount) {
-    if (amount >= 10000000) {
-      return '₹${(amount / 10000000).toStringAsFixed(1)} Cr';
-    } else if (amount >= 100000) {
-      return '₹${(amount / 100000).toStringAsFixed(1)} L';
-    } else if (amount >= 1000) {
-      return '₹${(amount / 1000).toStringAsFixed(0)} K';
-    } else {
-      return '₹$amount';
-    }
+    return Formatters.formatCurrency(amount);
   }
 
   Widget _buildRatingButton(Color textColor, Color cardColor) {

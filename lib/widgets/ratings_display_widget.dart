@@ -4,6 +4,7 @@ import '../models/rating_statistics.dart';
 import '../services/language_service.dart';
 import '../services/ratings_service.dart';
 import '../services/theme_service.dart';
+import '../utils/formatters.dart';
 
 class RatingsDisplayWidget extends StatefulWidget {
   final int representativeId;
@@ -465,21 +466,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
   }
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes}m ago';
-      }
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays < 30) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inDays < 365) {
-      return '${(difference.inDays / 30).floor()}mo ago';
-    } else {
-      return '${(difference.inDays / 365).floor()}y ago';
-    }
+    return Formatters.formatRelativeDate(date);
   }
 
   @override

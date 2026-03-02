@@ -1,13 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:provider/provider.dart';
 import 'home_page.dart';
 import 'search_page.dart';
 import 'rate_page.dart';
 import 'news_page.dart';
 import 'profile_page.dart';
+import '../providers/theme_provider.dart';
+import '../providers/language_provider.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../services/prefs_service.dart';
 
 class MainScreen extends StatefulWidget {
   final String userName;
@@ -31,115 +35,81 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  bool _isDarkMode = false;
-  DarkModeOption _darkModeOption = DarkModeOption.system;
-  int _accentColorIndex = 0;
+  // Track which tabs have been visited (lazy-build on first visit)
+  final List<bool> _visited = [true, false, false, false, false];
 
   @override
   void initState() {
     super.initState();
-    _loadThemePreferences();
-  }
-
-  Future<void> _loadThemePreferences() async {
-    final option = await ThemeService.loadDarkMode();
-    final colorIndex = await ThemeService.loadAccentColorIndex();
-    if (mounted) {
-      setState(() {
-        _darkModeOption = option;
-        _accentColorIndex = colorIndex;
-        _isDarkMode = ThemeService.resolveIsDark(
-          option,
-          WidgetsBinding.instance.platformDispatcher.platformBrightness,
-        );
-      });
-      _applyTheme();
+    _currentIndex = PrefsService.instance.getInt('last_nav_index') ?? 0;
+    // Ensure the initial tab is marked as visited
+    if (_currentIndex >= 0 && _currentIndex < _visited.length) {
+      _visited[_currentIndex] = true;
     }
   }
 
-  void _applyTheme() {
-    ThemeService.apply(
-      accentIndex: _accentColorIndex,
-      darkMode: _darkModeOption,
-      platformBrightness: WidgetsBinding.instance.platformDispatcher.platformBrightness,
-    );
-    _updateSystemUI();
-  }
-
-  void _updateSystemUI() {
+  void _updateSystemUI(bool isDarkMode) {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: _isDarkMode ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor: _isDarkMode ? ThemeService.bgMain : Colors.white,
-        systemNavigationBarIconBrightness: _isDarkMode ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: isDarkMode ? ThemeService.bgMain : Colors.white,
+        systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
       ),
     );
   }
 
-  void _toggleDarkMode(bool value) {
-    // Legacy toggle — maps to dark/light
-    _setDarkModeOption(value ? DarkModeOption.dark : DarkModeOption.light);
-  }
-
-  void _setDarkModeOption(DarkModeOption option) {
-    ThemeService.saveDarkMode(option);
-    setState(() {
-      _darkModeOption = option;
-      _isDarkMode = ThemeService.resolveIsDark(
-        option,
-        WidgetsBinding.instance.platformDispatcher.platformBrightness,
-      );
-    });
-    _applyTheme();
-  }
-
-  void _setAccentColor(int index) {
-    ThemeService.saveAccentColorIndex(index);
-    setState(() {
-      _accentColorIndex = index;
-    });
-    _applyTheme();
-  }
-
-  void _setLanguage(String code) {
-    LanguageService.setLanguage(code);
-    setState(() {});
+  /// Build pages lazily — only creates a page widget on first visit.
+  /// Before first visit, a SizedBox placeholder is used so IndexedStack
+  /// has the correct child count but doesn't inflate the real widget tree.
+  List<Widget> _buildPages() {
+    return [
+      // 0 – Home (always visited on launch)
+      HomePage(onNavigateToTab: (index) {
+        PrefsService.instance.setInt('last_nav_index', index);
+        setState(() {
+          _visited[index] = true;
+          _currentIndex = index;
+        });
+      }),
+      // 1 – Search
+      if (_visited[1]) SearchPage(key: SearchPage.globalKey) else const SizedBox.shrink(),
+      // 2 – Rate
+      if (_visited[2]) RatePage(key: ValueKey('rate_${LanguageService.languageCode}'), isVerified: widget.isVerified) else const SizedBox.shrink(),
+      // 3 – News
+      if (_visited[3]) const NewsPage() else const SizedBox.shrink(),
+      // 4 – Profile
+      if (_visited[4])
+        ProfilePage(
+          userName: widget.userName,
+          isVerified: widget.isVerified,
+          userEmail: widget.userEmail,
+          userId: widget.userId,
+          photoUrl: widget.photoUrl,
+        )
+      else
+        const SizedBox.shrink(),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    // Read LanguageProvider so bottom nav labels rebuild on language change
+    context.watch<LanguageProvider>();
+    final isDarkMode = theme.isDarkMode;
+
+    // Keep system chrome in sync
+    _updateSystemUI(isDarkMode);
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: [
-          HomePage(isDarkMode: _isDarkMode, languageCode: LanguageService.languageCode, onNavigateToTab: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          }),
-          SearchPage(key: SearchPage.globalKey, isDarkMode: _isDarkMode),
-          RatePage(isDarkMode: _isDarkMode, isVerified: widget.isVerified),
-          NewsPage(isDarkMode: _isDarkMode, languageCode: LanguageService.languageCode),
-          ProfilePage(
-            isDarkMode: _isDarkMode,
-            onDarkModeToggle: _toggleDarkMode,
-            darkModeOption: _darkModeOption,
-            accentColorIndex: _accentColorIndex,
-            onDarkModeOptionChanged: _setDarkModeOption,
-            onAccentColorChanged: _setAccentColor,
-            onLanguageChanged: _setLanguage,
-            userName: widget.userName,
-            isVerified: widget.isVerified,
-            userEmail: widget.userEmail,
-            userId: widget.userId,
-            photoUrl: widget.photoUrl,
-          ),
-        ],
+        children: _buildPages(),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: _isDarkMode ? ThemeService.bgMain : Colors.white,
+          color: isDarkMode ? ThemeService.bgMain : Colors.white,
           boxShadow: [
             BoxShadow(
               blurRadius: 20,
@@ -151,21 +121,22 @@ class _MainScreenState extends State<MainScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
             child: GNav(
-              rippleColor: _isDarkMode
+              rippleColor: isDarkMode
                   ? ThemeService.bgElev
                   : Colors.grey[300]!,
-              hoverColor: _isDarkMode
+              hoverColor: isDarkMode
                   ? ThemeService.bgElev
                   : Colors.grey[100]!,
-              gap: 8,
+              gap: 6,
               activeColor: ThemeService.accent,
               iconSize: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: _isDarkMode
+              tabBackgroundColor: isDarkMode
                   ? ThemeService.bgElev
                   : ThemeService.accent.withValues(alpha: 0.1),
-              color: _isDarkMode ? const Color(0xFF717171) : Colors.grey,
+              color: isDarkMode ? const Color(0xFF717171) : Colors.grey,
               tabs: [
                 GButton(
                   icon: Icons.home,
@@ -191,10 +162,11 @@ class _MainScreenState extends State<MainScreen> {
               selectedIndex: _currentIndex,
               onTabChange: (index) {
                 if (index == 1 && _currentIndex == 1) {
-                  // Double-tap on Search tab: focus the search bar
                   SearchPage.globalKey.currentState?.focusSearchBar();
                 }
+                PrefsService.instance.setInt('last_nav_index', index);
                 setState(() {
+                  _visited[index] = true;
                   _currentIndex = index;
                 });
               },

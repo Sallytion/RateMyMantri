@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'prefs_service.dart';
 import '../models/home_section.dart';
+import '../config/api_config.dart';
+import '../config/api_client.dart';
 
 /// Fetches and caches the dynamic home sections from the backend.
 ///
@@ -11,7 +12,7 @@ import '../models/home_section.dart';
 ///  - TTL is driven by the `ttl` field in the API response.
 ///  - On error (4xx / 5xx / network) → return last persisted cache if any.
 class HomeSectionsService {
-  static const String _baseUrl = 'https://ratemymantri.sallytion.qzz.io';
+  static String get _baseUrl => ApiConfig.baseUrl;
   static const String _prefPrefix = 'home_sections_';
 
   // In-memory cache: "(lang)_(theme)" → list of sections
@@ -57,9 +58,8 @@ class HomeSectionsService {
           if (appVersion != null) 'v': appVersion,
         },
       );
-      final response = await http
-          .get(uri, headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance
+          .get(uri, headers: {'Accept': 'application/json'});
 
       if (response.statusCode == 200) {
         final parsed = _parse(response.body);
@@ -136,7 +136,7 @@ class HomeSectionsService {
   /// Write the raw JSON body + epoch timestamp to SharedPreferences.
   static Future<void> _persist(String cacheKey, String rawBody, int ttl) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = PrefsService.instance;
       await prefs.setString('$_prefPrefix${cacheKey}_body', rawBody);
       await prefs.setInt(
         '$_prefPrefix${cacheKey}_ts',
@@ -150,7 +150,7 @@ class HomeSectionsService {
   /// Returns an empty list if nothing is stored or the stored data is corrupt.
   static Future<List<HomeSection>> _loadPersisted(String cacheKey) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = PrefsService.instance;
       final body = prefs.getString('$_prefPrefix${cacheKey}_body');
       if (body == null) return [];
 
@@ -177,7 +177,7 @@ class HomeSectionsService {
     _memCacheTs.clear();
     _memCacheTtl.clear();
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = PrefsService.instance;
       final keys = prefs.getKeys().where((k) => k.startsWith(_prefPrefix));
       for (final k in keys) {
         await prefs.remove(k);

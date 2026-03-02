@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'prefs_service.dart';
 
 class SavedArticle {
   final String title;
@@ -61,7 +61,7 @@ class SavedArticlesService {
   }
 
   Future<List<SavedArticle>> getSavedArticles() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     final String? articlesJson = prefs.getString(_key);
     if (articlesJson == null) return [];
 
@@ -70,7 +70,7 @@ class SavedArticlesService {
   }
 
   Future<bool> saveArticle(SavedArticle article) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     final articles = await getSavedArticles();
     
     // Check if article already exists (by link)
@@ -84,7 +84,7 @@ class SavedArticlesService {
   }
 
   Future<bool> removeArticle(String link) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     final articles = await getSavedArticles();
     articles.removeWhere((a) => a.link == link);
     
@@ -98,7 +98,7 @@ class SavedArticlesService {
   }
 
   Future<bool> clearAll() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = PrefsService.instance;
     return await prefs.remove(_key);
   }
 }

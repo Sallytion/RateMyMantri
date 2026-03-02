@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
+import '../config/api_client.dart';
 import 'auth_storage_service.dart';
 
 class AadhaarVerificationService {
-  static const String _baseUrl = 'https://ratemymantri.sallytion.qzz.io';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   /// Hash the raw Aadhaar QR data using SHA-256
   /// This ensures that the original Aadhaar data is never stored
@@ -44,7 +45,7 @@ class AadhaarVerificationService {
       }
 
       // Make API request
-      final response = await http.post(
+      final response = await ApiClient.instance.post(
         Uri.parse('$_baseUrl/auth/aadhaar'),
         headers: {
           'Authorization': 'Bearer $accessToken',
@@ -126,7 +127,7 @@ class AadhaarVerificationService {
 
       if (accessToken == null) return false;
 
-      final response = await http.get(
+      final response = await ApiClient.instance.get(
         Uri.parse('$_baseUrl/auth/profile'),
         headers: {'Authorization': 'Bearer $accessToken'},
       );

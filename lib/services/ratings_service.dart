@@ -1,13 +1,14 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/rating.dart';
 import '../models/rating_statistics.dart';
+import '../config/api_config.dart';
+import '../config/api_client.dart';
 import 'auth_storage_service.dart';
 import 'cache_service.dart';
 import 'language_service.dart';
 
 class RatingsService {
-  static const String baseUrl = 'https://ratemymantri.sallytion.qzz.io/api';
+  static String get baseUrl => ApiConfig.api;
   static const Duration _cacheTtl = Duration(minutes: 5);
 
   // Helper method to get headers with auth token
@@ -50,7 +51,7 @@ class RatingsService {
           'reviewText': reviewText,
       };
 
-      final response = await http.post(
+      final response = await ApiClient.instance.post(
         Uri.parse('$baseUrl/ratings'),
         headers: headers,
         body: json.encode(body),
@@ -94,7 +95,7 @@ class RatingsService {
       if (question3Stars != null) body['question3Stars'] = question3Stars;
       if (anonymous != null) body['anonymous'] = anonymous;
       if (reviewText != null) body['reviewText'] = reviewText;
-      final response = await http.put(
+      final response = await ApiClient.instance.put(
         Uri.parse('$baseUrl/ratings/$ratingId'),
         headers: headers,
         body: json.encode(body),
@@ -124,7 +125,7 @@ class RatingsService {
   Future<bool> deleteRating(String ratingId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.delete(
+      final response = await ApiClient.instance.delete(
         Uri.parse('$baseUrl/ratings/$ratingId'),
         headers: headers,
       );
@@ -182,7 +183,7 @@ class RatingsService {
               'sortOrder': sortOrder,
             },
           );
-      final response = await http.get(uri);
+      final response = await ApiClient.instance.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -233,7 +234,7 @@ class RatingsService {
       final uri = Uri.parse('$baseUrl/ratings/statistics/$representativeId').replace(
         queryParameters: {'lang': LanguageService.languageCode},
       );
-      final response = await http.get(uri);
+      final response = await ApiClient.instance.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -262,7 +263,7 @@ class RatingsService {
       final uri = Uri.parse('$baseUrl/ratings/user/me').replace(
         queryParameters: {'lang': LanguageService.languageCode},
       );
-      final response = await http.get(uri, headers: headers);
+      final response = await ApiClient.instance.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -289,7 +290,7 @@ class RatingsService {
       final uri = Uri.parse(
         '$baseUrl/ratings/user/me/representative/$representativeId',
       );
-      final response = await http.get(uri, headers: headers);
+      final response = await ApiClient.instance.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'pages/google_sign_in_page.dart';
+import 'pages/onboarding_page.dart';
 import 'pages/main_screen.dart';
+import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 import 'services/auth_storage_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
+import 'services/prefs_service.dart';
 import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Pre-fetch SharedPreferences singleton (used by every service)
+  await PrefsService.init();
   
   // Initialize language service (loads preference + inditrans engine)
   await LanguageService.init();
@@ -49,32 +57,42 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Rate My Mantri',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: ThemeService.accent,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: Colors.white,
-        canvasColor: Colors.white,
-        cardColor: const Color(0xFFF7F7F7),
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, theme, _) {
+          return MaterialApp(
+            title: 'Rate My Mantri',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: ThemeService.accent,
+                brightness: Brightness.light,
+              ),
+              scaffoldBackgroundColor: Colors.white,
+              canvasColor: Colors.white,
+              cardColor: const Color(0xFFF7F7F7),
+              useMaterial3: true,
+            ),
+            darkTheme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: ThemeService.accent,
+                brightness: Brightness.dark,
+              ),
+              scaffoldBackgroundColor: ThemeService.bgMain,
+              canvasColor: ThemeService.bgMain,
+              cardColor: ThemeService.bgElev,
+              dialogTheme: DialogThemeData(backgroundColor: ThemeService.bgElev),
+              useMaterial3: true,
+            ),
+            themeMode: ThemeMode.system,
+            home: const AuthChecker(),
+          );
+        },
       ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: ThemeService.accent,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: ThemeService.bgMain,
-        canvasColor: ThemeService.bgMain,
-        cardColor: ThemeService.bgElev,
-        dialogTheme: DialogThemeData(backgroundColor: ThemeService.bgElev),
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.system,
-      home: const AuthChecker(),
     );
   }
 }
@@ -94,6 +112,9 @@ class _AuthCheckerState extends State<AuthChecker> {
   }
 
   Future<void> _checkAuth() async {
+    // Wait for the initial frame to be built before attempting navigation
+    await Future.delayed(Duration.zero);
+    
     try {
       // Check if user has valid tokens
       final isAuthenticated = await AuthStorageService.isAuthenticated();
@@ -106,7 +127,25 @@ class _AuthCheckerState extends State<AuthChecker> {
           // User is authenticated, get verification status
           final isVerified =
               await AuthStorageService.getAadhaarVerificationStatus();
+          
           if (!mounted) return;
+
+          // Check if onboarding has been completed
+          final prefs = PrefsService.instance;
+          final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+          if (!onboardingCompleted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => OnboardingPage(
+                userName: userData['name'] ?? 'User',
+                isVerified: isVerified,
+                userEmail: userData['email'],
+                userId: userData['googleId'] ?? '',
+                photoUrl: userData['picture'],
+              )),
+            );
+            return;
+          }
 
           // Navigate to main screen with user data
           Navigator.of(context).pushReplacement(

@@ -1,13 +1,16 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'aadhar_verification_page.dart';
-import 'main_screen.dart';
+import '../main.dart';
+import '../config/api_config.dart';
+import '../config/api_client.dart';
 import '../services/auth_storage_service.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../widgets/language_sheet.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GoogleSignInPage extends StatefulWidget {
   const GoogleSignInPage({super.key});
@@ -30,6 +33,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _tosAccepted = true;
 
   @override
   void initState() {
@@ -75,33 +79,14 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       final idToken = authentication.idToken;
 
       if (idToken == null) {
-        debugPrint('[AUTH] ERROR: idToken is null. Check Web OAuth Client ID in serverClientId.');
         throw Exception(
           'Failed to get ID token. Please check Google Cloud Console OAuth setup.',
         );
       }
 
-      debugPrint('[AUTH] Got idToken (first 40 chars): ${idToken.substring(0, 40)}...');
-
-      // ── Domain reachability probe ──────────────────────────────────────────
-      // Tests a plain GET on the same domain BEFORE the auth POST.
-      // If this also fails with hostname mismatch → cert issue affects everything.
-      // If this SUCCEEDS → problem is specific to the POST /auth/google path.
-      try {
-        final probe = await http.get(
-          Uri.parse('https://ratemymantri.sallytion.qzz.io/health'),
-        ).timeout(const Duration(seconds: 5));
-        debugPrint('[AUTH] /health probe status: ${probe.statusCode}');
-        debugPrint('[AUTH] /health probe body: ${probe.body}');
-      } catch (e) {
-        debugPrint('[AUTH] /health probe FAILED: $e');
-      }
-      // ──────────────────────────────────────────────────────────────────────
-
       // Authenticate with backend
       await _authenticateWithBackend(idToken, account);
     } catch (error) {
-      debugPrint('[AUTH] _handleSignIn caught error: $error');
       if (mounted) {
         setState(() {
           _errorMessage = LanguageService.tr('sign_in_failed');
@@ -116,15 +101,11 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     GoogleSignInAccount account,
   ) async {
     try {
-      debugPrint('[AUTH] Posting idToken to /auth/google...');
-      final response = await http.post(
-        Uri.parse('https://ratemymantri.sallytion.qzz.io/auth/google'),
+      final response = await ApiClient.instance.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/google'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'idToken': idToken}),
       );
-
-      debugPrint('[AUTH] /auth/google response status: ${response.statusCode}');
-      debugPrint('[AUTH] /auth/google response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -132,33 +113,20 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
         // Save tokens and user data locally
         await AuthStorageService.saveAuthResponse(responseData);
 
-        // ðŸ” DEBUG: Decode and check JWT token
-        if (responseData['tokens'] != null &&
-            responseData['tokens']['accessToken'] != null) {
-          // Token decoding removed (was only used for debug logging)
-        }
 
         // Fetch user profile to check Aadhaar verification status
         final userProfile = await AuthStorageService.fetchUserProfile();
         final isAadhaarVerified = userProfile?['is_verified'] == true;
 
         if (mounted) {
-          if (isAadhaarVerified) {
-            // Skip Aadhaar verification, go directly to main screen
-            _navigateToMainScreen(account, isVerified: true);
-          } else {
-            // Show Aadhaar verification page
-            _navigateToAadharVerification(account);
-          }
+          _navigateToMainScreen(account, isVerified: isAadhaarVerified);
         }
       } else {
-        debugPrint('[AUTH] Backend rejected with ${response.statusCode}: ${response.body}');
         throw Exception(
           'Backend authentication failed: ${response.statusCode} — ${response.body}',
         );
       }
     } catch (error) {
-      debugPrint('[AUTH] _authenticateWithBackend caught error: $error');
       if (mounted) {
         setState(() {
           _errorMessage = LanguageService.tr('auth_failed');
@@ -169,20 +137,6 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     }
   }
 
-  void _navigateToAadharVerification(GoogleSignInAccount account) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AadharVerificationPage(
-          userEmail: account.email,
-          userName: account.displayName ?? LanguageService.tr('user'),
-          userId: account.id,
-          photoUrl: account.photoUrl,
-        ),
-      ),
-    );
-  }
-
   void _navigateToMainScreen(
     GoogleSignInAccount account, {
     required bool isVerified,
@@ -190,13 +144,26 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => MainScreen(
-          userName: account.displayName ?? LanguageService.tr('user'),
-          isVerified: isVerified,
-          userEmail: account.email,
-          userId: account.id,
-          photoUrl: account.photoUrl,
-        ),
+        builder: (context) => const AuthChecker(),
+      ),
+    );
+  }
+
+  void _showLanguageSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LanguageSheet(
+        isDarkMode: isDark,
+        cardBackground: isDark ? ThemeService.bgElev : const Color(0xFFF7F7F7),
+        primaryText: isDark ? const Color(0xFFFFFFFF) : const Color(0xFF222222),
+        secondaryText: isDark ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
+        onLanguageChanged: (code) {
+          context.read<LanguageProvider>().setLanguage(code);
+          setState(() {});
+        },
       ),
     );
   }
@@ -208,12 +175,14 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 80),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 80),
 
               // App Logo
               ClipRRect(
@@ -231,7 +200,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
               const SizedBox(height: 40),
 
               Text(
-                LanguageService.tr('welcome_title'),
+                LanguageService.tr('welcome_title').replaceAll('\\n', '\n'),
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w700,
@@ -277,12 +246,64 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                   ),
                 ),
 
+              // TOS Checkbox
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Checkbox(
+                    value: _tosAccepted,
+                    activeColor: ThemeService.accent,
+                    checkColor: Colors.white,
+                    side: BorderSide(
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _tosAccepted = val ?? false;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final url = Uri.parse('https://ratemymantri.sallytion.qzz.io/TOS');
+                        try {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        } catch (e) {
+                          debugPrint('Error launching TOS URL: $e');
+                        }
+                      },
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'By signing in you agree to our ',
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : const Color(0xFF717171),
+                            fontSize: 14,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'TOS',
+                              style: TextStyle(
+                                color: ThemeService.accent,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
               // Google Sign-In Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleSignIn,
+                  onPressed: (_isLoading || !_tosAccepted) ? null : _handleSignIn,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDark ? ThemeService.bgElev : Colors.white,
                     foregroundColor: isDark ? Colors.white : const Color(0xFF222222),
@@ -372,7 +393,25 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
             ],
           ),
         ),
-      ),
-    );
+        Positioned(
+          top: 16,
+          right: 16,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.language_rounded, color: isDark ? Colors.white70 : Colors.black87),
+              onPressed: _showLanguageSheet,
+              tooltip: LanguageService.tr('language'),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+);
   }
 }
+

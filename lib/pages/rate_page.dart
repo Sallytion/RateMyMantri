@@ -1,20 +1,22 @@
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import '../providers/theme_provider.dart';
 import '../models/rating.dart';
 import '../services/ratings_service.dart';
 import '../services/auth_storage_service.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../utils/formatters.dart';
+import '../utils/widgets/placeholder_avatar.dart';
 import '../widgets/rating_form_widget.dart';
 
 class RatePage extends StatefulWidget {
-  final bool isDarkMode;
   final bool isVerified;
 
   const RatePage({
     super.key,
-    required this.isDarkMode,
     required this.isVerified,
   });
 
@@ -25,7 +27,10 @@ class RatePage extends StatefulWidget {
 class _RatePageState extends State<RatePage> {
   final RatingsService _ratingsService = RatingsService();
 
-  // ─── Static in-memory cache (survives widget rebuilds) ─────────
+  /// Reads the current dark-mode flag from the provider.
+  bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
+
+  // â”€â”€â”€ Static in-memory cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static List<Rating>? _cachedRatings;
   static bool? _cachedIsAuthenticated;
 
@@ -91,7 +96,7 @@ class _RatePageState extends State<RatePage> {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 340),
           decoration: BoxDecoration(
-            color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
+            color: isDarkMode ? ThemeService.bgElev : Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Padding(
@@ -115,7 +120,7 @@ class _RatePageState extends State<RatePage> {
                 Text(
                   LanguageService.tr('delete_rating'),
                   style: TextStyle(
-                    color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+                    color: isDarkMode ? Colors.white : const Color(0xFF222222),
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
@@ -126,7 +131,7 @@ class _RatePageState extends State<RatePage> {
                   '${LanguageService.tr('delete_rating_confirm')}\n${rating.representativeName ?? LanguageService.tr('this_representative')}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
+                    color: isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
                     fontSize: 14,
                     height: 1.5,
                   ),
@@ -139,7 +144,7 @@ class _RatePageState extends State<RatePage> {
                         onPressed: () => Navigator.pop(context, false),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 13),
-                          backgroundColor: widget.isDarkMode
+                          backgroundColor: isDarkMode
                               ? ThemeService.bgBorder
                               : const Color(0xFFF5F5F5),
                           shape: RoundedRectangleBorder(
@@ -218,7 +223,7 @@ class _RatePageState extends State<RatePage> {
           representativeId: rating.representativeId,
           representativeName: rating.representativeName ?? 'Unknown',
           officeType: rating.officeType ?? 'MP',
-          isDarkMode: widget.isDarkMode,
+          isDarkMode: isDarkMode,
           isVerified: widget.isVerified,
           existingRating: rating,
           onRatingSubmitted: () {
@@ -230,7 +235,7 @@ class _RatePageState extends State<RatePage> {
     );
   }
 
-  // ─── Star bar helper ────────────────────────────────────────────
+  // â”€â”€â”€ Star bar helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStarRow(int stars, {double size = 14}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -239,21 +244,21 @@ class _RatePageState extends State<RatePage> {
         size: size,
         color: i < stars
             ? ThemeService.accent
-            : (widget.isDarkMode ? const Color(0xFF444444) : const Color(0xFFD5D5D5)),
+            : (isDarkMode ? const Color(0xFF444444) : const Color(0xFFD5D5D5)),
       )),
     );
   }
 
-  // ─── Rating card ────────────────────────────────────────────────
+  // â”€â”€â”€ Rating card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildRatingCard(Rating rating, {required Color textColor, required Color subtextColor}) {
-    final borderColor = widget.isDarkMode
+    final borderColor = isDarkMode
         ? ThemeService.bgBorder
         : const Color(0xFFEEEEEE);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? ThemeService.bgCard : Colors.white,
+        color: isDarkMode ? ThemeService.bgCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor, width: 1),
       ),
@@ -268,7 +273,7 @@ class _RatePageState extends State<RatePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Top row: avatar + name + overall stars ──
+                // â”€â”€ Top row: avatar + name + overall stars â”€â”€
                 Row(
                   children: [
                     // Circular avatar
@@ -319,7 +324,7 @@ class _RatePageState extends State<RatePage> {
                             [
                               if (rating.party != null && rating.party!.isNotEmpty) rating.party!,
                               if (rating.constituency != null && rating.constituency!.isNotEmpty) rating.constituency!,
-                            ].join(' · '),
+                            ].join(' • '),
                             style: TextStyle(
                               fontSize: 12,
                               color: subtextColor,
@@ -358,7 +363,7 @@ class _RatePageState extends State<RatePage> {
                   ],
                 ),
 
-                // ── Star breakdown ──
+                // â”€â”€ Star breakdown â”€â”€
                 Padding(
                   padding: const EdgeInsets.only(top: 14, bottom: 2),
                   child: Row(
@@ -382,7 +387,7 @@ class _RatePageState extends State<RatePage> {
                   ),
                 ),
 
-                // ── Review text ──
+                // â”€â”€ Review text â”€â”€
                 if (rating.reviewText != null && rating.reviewText!.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -400,7 +405,7 @@ class _RatePageState extends State<RatePage> {
                   ),
                 ],
 
-                // ── Footer: status + date + actions ──
+                // â”€â”€ Footer: status + date + actions â”€â”€
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Row(
@@ -499,40 +504,14 @@ class _RatePageState extends State<RatePage> {
   }
 
   Widget _buildPlaceholderAvatar(String name) {
-    return Container(
-      color: ThemeService.accent,
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-      ),
-    );
+    return PlaceholderAvatar(name: name, fontSize: 18, useGradient: false);
   }
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes}m ago';
-      }
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays < 30) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inDays < 365) {
-      return '${(difference.inDays / 30).floor()}mo ago';
-    } else {
-      return '${(difference.inDays / 365).floor()}y ago';
-    }
+    return Formatters.formatRelativeDate(date);
   }
 
-  // ─── Empty/auth states ──────────────────────────────────────────
+  // â”€â”€â”€ Empty/auth states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildEmptyState({
     required IconData icon,
     required String title,
@@ -579,9 +558,10 @@ class _RatePageState extends State<RatePage> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.isDarkMode ? ThemeService.bgMain : const Color(0xFFF7F7F7);
-    final textColor = widget.isDarkMode ? Colors.white : const Color(0xFF222222);
-    final subtextColor = widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+    final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
+    final backgroundColor = isDarkMode ? ThemeService.bgMain : const Color(0xFFF7F7F7);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF222222);
+    final subtextColor = isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -611,7 +591,7 @@ class _RatePageState extends State<RatePage> {
                       )
                     : Column(
                         children: [
-                          // ── Header ──
+                          // â”€â”€ Header â”€â”€
                           Padding(
                             padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                             child: Row(
@@ -672,7 +652,7 @@ class _RatePageState extends State<RatePage> {
                             ),
                           ),
 
-                          // ── Ratings list ──
+                          // â”€â”€ Ratings list â”€â”€
                           Expanded(
                             child: RefreshIndicator(
                               color: ThemeService.accent,

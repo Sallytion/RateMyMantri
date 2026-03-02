@@ -1,17 +1,20 @@
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:intl/intl.dart';
-import 'package:ip_detector/ip_detector.dart';
+import '../utils/formatters.dart';
+import '../utils/location_service.dart';
+import '../providers/theme_provider.dart';
 import '../services/theme_service.dart';
 import '../services/language_service.dart';
 import '../services/google_news_decoder.dart';
 import '../services/article_extractor.dart';
 import '../services/saved_articles_service.dart';
+import '../services/constituency_notifier.dart';
+import '../services/constituency_service.dart';
 import '../widgets/skeleton_widgets.dart';
 import 'article_viewer_page.dart';
 
@@ -34,16 +37,16 @@ class Article {
 }
 
 class NewsPage extends StatefulWidget {
-  final bool isDarkMode;
-  final String languageCode;
-
-  const NewsPage({super.key, required this.isDarkMode, required this.languageCode});
+  const NewsPage({super.key});
 
   @override
   State<NewsPage> createState() => _NewsPageState();
 }
 
 class _NewsPageState extends State<NewsPage> {
+  /// Reads the current dark-mode flag from the provider.
+  bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
+
   List<Article> _articles = [];
   bool _loading = false;
   String _error = '';
@@ -69,36 +72,10 @@ class _NewsPageState extends State<NewsPage> {
   final SavedArticlesService _savedArticlesService = SavedArticlesService();
   final Set<String> _savedArticleLinks = {};
 
-  // ─── Static per-tag cache (survives widget rebuilds) ───────────
+  // â”€â”€â”€ Static per-tag cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static final Map<String, List<Article>> _cachedArticlesByTag = {};
   static final Map<String, Map<int, String>> _cachedImagesByTag = {};
   static String? _cachedSelectedTag;
-
-  @override
-  void didUpdateWidget(covariant NewsPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.languageCode != widget.languageCode) {
-      // Language changed — clear cached articles and re-fetch with new language
-      _cachedArticlesByTag.clear();
-      _cachedImagesByTag.clear();
-      _cachedSelectedTag = null;
-      if (_selectedTag == 'Local') {
-        // For Local, fetch using cached city or fall back to generic feed
-        _getCityFromIp().then((loc) {
-          if (!mounted) return;
-          if (loc != null) {
-            final url = _buildGNewsUrlForCity(loc['city']!, loc['country']!);
-            _fetchFeed(url: url, tag: 'Local');
-          } else {
-            _fetchFeed(tag: 'Local');
-          }
-        });
-      } else {
-        final url = _buildUrlForTag(_selectedTag);
-        _fetchFeed(url: url, tag: _selectedTag);
-      }
-    }
-  }
 
   @override
   void initState() {
@@ -291,36 +268,7 @@ class _NewsPageState extends State<NewsPage> {
   }
 
   Future<Map<String, String>?> _getCityFromIp({int ttlSeconds = 86400}) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final ts = prefs.getInt('geo_ts') ?? 0;
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      if (now - ts < ttlSeconds) {
-        final city = prefs.getString('geo_city');
-        final country = prefs.getString('geo_country');
-        if (city != null && country != null) {
-          return {'city': city, 'country': country};
-        }
-      }
-
-      final ipDetector = IpDetector(timeout: const Duration(seconds: 10));
-      final response = await ipDetector.fetch(enableLog: false);
-
-      if (response.type == IpDetectorResponseType.succeedResponse) {
-        final city = ipDetector.city()?.trim();
-        final country = ipDetector.countryCode()?.trim();
-
-        if (city != null && city.isNotEmpty && country != null && country.isNotEmpty) {
-          await prefs.setString('geo_city', city);
-          await prefs.setString('geo_country', country);
-          await prefs.setInt('geo_ts', now);
-          return {'city': city, 'country': country};
-        }
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
+    return LocationService.instance.getCityFromIp(ttlSeconds: ttlSeconds);
   }
 
   String _buildGNewsUrlForCity(String city, String countryCode) {
@@ -332,7 +280,7 @@ class _NewsPageState extends State<NewsPage> {
   }
 
   /// Returns the RSS URL for a given tag using the current language params.
-  /// Returns null for 'Local' (requires async IP lookup — handled separately).
+  /// Returns null for 'Local' (requires async IP lookup â€” handled separately).
   String? _buildUrlForTag(String tag) {
     final p = LanguageService.newsGlParams;
     final map = {
@@ -351,27 +299,7 @@ class _NewsPageState extends State<NewsPage> {
   }
 
   String _formatDate(String pubDate) {
-    try {
-      // Parse RFC 822 format (e.g., "Wed, 04 Feb 2025 10:18:45 GMT")
-      final date = DateFormat('EEE, dd MMM yyyy HH:mm:ss zzz').parseUtc(pubDate);
-      final now = DateTime.now().toUtc();
-      final diff = now.difference(date);
-
-      if (diff.inDays == 0) {
-        if (diff.inHours == 0) {
-          return '${diff.inMinutes}m ago';
-        }
-        return '${diff.inHours}h ago';
-      } else if (diff.inDays < 7) {
-        return '${diff.inDays}d ago';
-      } else {
-        // Convert to IST (UTC+5:30) for display
-        final ist = date.add(const Duration(hours: 5, minutes: 30));
-        return '${ist.day}/${ist.month}/${ist.year}';
-      }
-    } catch (_) {
-      return pubDate;
-    }
+    return Formatters.formatPubDate(pubDate);
   }
 
   Widget _buildImage(String imageUrl, int fallbackIndex) {
@@ -395,8 +323,9 @@ class _NewsPageState extends State<NewsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? ThemeService.bgAlt : Colors.white,
+      backgroundColor: isDarkMode ? ThemeService.bgAlt : Colors.white,
       body: Column(
         children: [
           SafeArea(
@@ -411,7 +340,7 @@ class _NewsPageState extends State<NewsPage> {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
-                      color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+                      color: isDarkMode ? Colors.white : const Color(0xFF222222),
                       letterSpacing: -0.3,
                     ),
                   ),
@@ -442,25 +371,43 @@ class _NewsPageState extends State<NewsPage> {
                             await _fetchFeed(tag: 'Local');
                             return;
                           }
-                          final loc = await _getCityFromIp();
-                          if (loc != null) {
+                          // Primary: use set constituency
+                          var constituency = ConstituencyNotifier.instance.current;
+                          constituency ??= await ConstituencyService().getCurrentConstituency();
+                          if (constituency != null) {
                             if (mounted) {
                               messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text('${LanguageService.tr('showing_news_for')} ${loc['city']}, ${loc['country']}'),
+                                  content: Text('${LanguageService.tr('showing_news_for')} ${constituency.name}'),
                                   duration: const Duration(seconds: 2),
                                 ),
                               );
                             }
-                            final url = _buildGNewsUrlForCity(loc['city']!, loc['country']!);
+                            final query = Uri.encodeComponent(constituency.nameEn);
+                            final url = 'https://news.google.com/rss/search?q=$query&${LanguageService.newsGlParams}';
                             await _fetchFeed(url: url, tag: 'Local');
                           } else {
-                            if (mounted) {
-                              messenger.showSnackBar(
-                                SnackBar(content: Text(LanguageService.tr('could_not_detect_location'))),
-                              );
+                            // Fallback: IP-based city detection
+                            final loc = await _getCityFromIp();
+                            if (loc != null) {
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('${LanguageService.tr('showing_news_for')} ${loc['city']}, ${loc['country']}'),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                              final url = _buildGNewsUrlForCity(loc['city']!, loc['country']!);
+                              await _fetchFeed(url: url, tag: 'Local');
+                            } else {
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  SnackBar(content: Text(LanguageService.tr('could_not_detect_location'))),
+                                );
+                              }
+                              await _fetchFeed(tag: 'Local');
                             }
-                            await _fetchFeed(tag: 'Local');
                           }
                           return;
                         }
@@ -477,7 +424,7 @@ class _NewsPageState extends State<NewsPage> {
           ),
           Expanded(
             child: _loading
-                ? NewsPageSkeleton(isDarkMode: widget.isDarkMode)
+                ? NewsPageSkeleton(isDarkMode: isDarkMode)
                 : _error.isNotEmpty
                     ? ListView(
                         children: [
@@ -516,7 +463,7 @@ class _NewsPageState extends State<NewsPage> {
                                         source: a.source,
                                         pubDate: _formatDate(a.pubDate),
                                         originalUrl: a.decodedUrl ?? a.link,
-                                        isDarkMode: widget.isDarkMode,
+                                        isDarkMode: isDarkMode,
                                       ),
                                     ),
                                   );
@@ -542,11 +489,11 @@ class _NewsPageState extends State<NewsPage> {
                                         child: cachedImg != null
                                             ? _buildImage(cachedImg, i)
                                             : Container(
-                                                color: widget.isDarkMode
+                                                color: isDarkMode
                                                     ? ThemeService.bgCard
                                                     : Colors.grey[200],
                                                 child: SkeletonShimmer(
-                                                  isDarkMode: widget.isDarkMode,
+                                                  isDarkMode: isDarkMode,
                                                   child: Container(
                                                     margin: const EdgeInsets.all(20),
                                                     decoration: BoxDecoration(
@@ -606,7 +553,7 @@ class _NewsPageState extends State<NewsPage> {
                                                       messenger.showSnackBar(
                                                         SnackBar(
                                                           content: Text(LanguageService.tr('removed_from_saved')),
-                                                          backgroundColor: widget.isDarkMode
+                                                          backgroundColor: isDarkMode
                                                               ? ThemeService.bgElev
                                                               : const Color(0xFF323232),
                                                           duration: const Duration(seconds: 2),
@@ -632,7 +579,7 @@ class _NewsPageState extends State<NewsPage> {
                                                       messenger.showSnackBar(
                                                         SnackBar(
                                                           content: Text(LanguageService.tr('saved_to_bookmarks')),
-                                                          backgroundColor: widget.isDarkMode
+                                                          backgroundColor: isDarkMode
                                                               ? ThemeService.bgElev
                                                               : const Color(0xFF323232),
                                                           duration: const Duration(seconds: 2),

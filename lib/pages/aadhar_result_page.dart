@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/aadhar_data.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
-import 'main_screen.dart';
+import '../main.dart';
 
 class AadharResultPage extends StatelessWidget {
   final AadharData data;
@@ -13,6 +13,7 @@ class AadharResultPage extends StatelessWidget {
   final String? photoUrl;
   final String? rawQrData;
   final bool backendVerified;
+  final VoidCallback? onComplete;
 
   const AadharResultPage({
     super.key,
@@ -23,7 +24,22 @@ class AadharResultPage extends StatelessWidget {
     this.photoUrl,
     this.rawQrData,
     this.backendVerified = false,
+    this.onComplete,
   });
+
+  void _finishLogic(BuildContext context) {
+    if (onComplete != null) {
+      onComplete!();
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AuthChecker(),
+        ),
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -273,19 +289,7 @@ class AadharResultPage extends StatelessWidget {
                           // The backend now returns updated tokens after verification
 
                           if (context.mounted) {
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MainScreen(
-                                  userName: userName,
-                                  isVerified: true,
-                                  userEmail: userEmail,
-                                  userId: userId,
-                                  photoUrl: photoUrl,
-                                ),
-                              ),
-                              (route) => false,
-                            );
+                            _finishLogic(context);
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -337,19 +341,7 @@ class AadharResultPage extends StatelessWidget {
                       height: 56,
                       child: OutlinedButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MainScreen(
-                                userName: userName,
-                                isVerified: false,
-                                userEmail: userEmail,
-                                userId: userId,
-                                photoUrl: photoUrl,
-                              ),
-                            ),
-                            (route) => false,
-                          );
+                          _finishLogic(context);
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF222222)),
@@ -400,19 +392,7 @@ class AadharResultPage extends StatelessWidget {
                       height: 56,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MainScreen(
-                                userName: userName,
-                                isVerified: false,
-                                userEmail: userEmail,
-                                userId: userId,
-                                photoUrl: photoUrl,
-                              ),
-                            ),
-                            (route) => false,
-                          );
+                          _finishLogic(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ThemeService.accent,

@@ -1,20 +1,22 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import '../providers/theme_provider.dart';
 import '../models/representative.dart';
 import '../services/representative_service.dart';
 import '../services/prefetch_service.dart';
 import '../services/theme_service.dart';
 import '../services/language_service.dart';
+import '../utils/formatters.dart';
+import '../utils/widgets/placeholder_avatar.dart';
 import '../widgets/skeleton_widgets.dart';
 import 'representative_detail_page.dart';
 import '../widgets/india_pc_map_widget.dart';
 
 class SearchPage extends StatefulWidget {
-  final bool isDarkMode;
-
-  const SearchPage({super.key, required this.isDarkMode});
+  const SearchPage({super.key});
 
   /// Global key so MainScreen can call methods on the state.
   // ignore: library_private_types_in_public_api
@@ -30,7 +32,10 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  // ─── Static in-memory cache (survives widget rebuilds) ─────────
+  /// Reads the current dark-mode flag from the provider.
+  bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
+
+  // â”€â”€â”€ Static in-memory cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static List<Representative>? _cachedResults;
   static String? _cachedQuery;
 
@@ -122,28 +127,22 @@ class _SearchPageState extends State<SearchPage> {
       MaterialPageRoute(
         builder: (context) => RepresentativeDetailPage(
           representativeId: rep.id.toString(),
-          isDarkMode: widget.isDarkMode,
+          isDarkMode: isDarkMode,
         ),
       ),
     );  }
 
   String _formatCurrency(int amount) {
-    if (amount >= 10000000) {
-      return '${(amount / 10000000).toStringAsFixed(1)}Cr';
-    } else if (amount >= 100000) {
-      return '${(amount / 100000).toStringAsFixed(1)}L';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}K';
-    }
-    return amount.toString();
+    return Formatters.formatCurrency(amount, showSymbol: false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.isDarkMode ? ThemeService.bgAlt : const Color(0xFFFAFAFA);
-    final cardColor = widget.isDarkMode ? ThemeService.bgCard : Colors.white;
-    final textColor = widget.isDarkMode ? Colors.white : const Color(0xFF222222);
-    final subtextColor = widget.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+    final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
+    final backgroundColor = isDarkMode ? ThemeService.bgAlt : const Color(0xFFFAFAFA);
+    final cardColor = isDarkMode ? ThemeService.bgCard : Colors.white;
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF222222);
+    final subtextColor = isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
     
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -170,7 +169,7 @@ class _SearchPageState extends State<SearchPage> {
                   // Search Input
                   Container(
                     decoration: BoxDecoration(
-                      color: widget.isDarkMode ? ThemeService.bgElev : const Color(0xFFF0F0F0),
+                      color: isDarkMode ? ThemeService.bgElev : const Color(0xFFF0F0F0),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: _searchFocusNode.hasFocus
@@ -254,14 +253,14 @@ class _SearchPageState extends State<SearchPage> {
           // Results Section
           Expanded(
             child: _searchController.text.isEmpty
-                ? IndiaPCMapWidget(isDarkMode: widget.isDarkMode)
+                ? IndiaPCMapWidget(isDarkMode: isDarkMode)
                 : _isSearching && _searchResults.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.only(top: 20),
                         child: Column(
                           children: List.generate(
                             5,
-                            (_) => SearchResultSkeleton(isDarkMode: widget.isDarkMode),
+                            (_) => SearchResultSkeleton(isDarkMode: isDarkMode),
                           ),
                         ),
                       )
@@ -273,7 +272,7 @@ class _SearchPageState extends State<SearchPage> {
                             Container(
                               padding: const EdgeInsets.all(32),
                               decoration: BoxDecoration(
-                                color: widget.isDarkMode
+                                color: isDarkMode
                                     ? ThemeService.bgElev
                                     : const Color(0xFFF0F0F0),
                                 shape: BoxShape.circle,
@@ -319,7 +318,7 @@ class _SearchPageState extends State<SearchPage> {
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.06),
+                                  color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.06),
                                   blurRadius: 16,
                                   offset: const Offset(0, 4),
                                 ),
@@ -342,7 +341,7 @@ class _SearchPageState extends State<SearchPage> {
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(16),
                                           border: Border.all(
-                                            color: widget.isDarkMode
+                                            color: isDarkMode
                                                 ? ThemeService.bgBorder
                                                 : const Color(0xFFE0E0E0),
                                             width: 2,
@@ -514,27 +513,6 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildPlaceholderAvatar(Representative rep, Color textColor) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            ThemeService.accent,
-            ThemeService.accent.withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          rep.fullName.isNotEmpty ? rep.fullName[0].toUpperCase() : '?',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 24,
-          ),
-        ),
-      ),
-    );
+    return PlaceholderAvatar(name: rep.fullName);
   }
 }
