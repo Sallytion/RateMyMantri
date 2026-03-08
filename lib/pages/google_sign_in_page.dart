@@ -11,6 +11,7 @@ import '../widgets/language_sheet.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/prefs_service.dart';
 
 class GoogleSignInPage extends StatefulWidget {
   const GoogleSignInPage({super.key});
@@ -40,6 +41,11 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     super.initState();
     // Try silent sign-in on app start
     _trySilentSignIn();
+    
+    // Check and show disclaimer on first open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showDisclaimerPopup(force: false);
+    });
   }
 
   Future<void> _trySilentSignIn() async {
@@ -164,6 +170,147 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
           context.read<LanguageProvider>().setLanguage(code);
           setState(() {});
         },
+      ),
+    );
+  }
+
+  void _showDisclaimerPopup({required bool force}) {
+    final prefs = PrefsService.instance;
+    final hasSeenDisclaimer = prefs.getBool('has_seen_login_disclaimer') ?? false;
+
+    if (!force && hasSeenDisclaimer) {
+      return; // Already seen it, don't auto-show
+    }
+
+    if (!force) {
+      // Mark as seen so it doesn't auto-pop again
+      prefs.setBool('has_seen_login_disclaimer', true);
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? ThemeService.bgElev : const Color(0xFFF7F7F7);
+    final primaryTxt = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
+    final secondaryTxt = isDark ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 32,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF607D8B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFF607D8B),
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          LanguageService.tr('about_app_disclaimer'),
+                          style: TextStyle(
+                            color: primaryTxt,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    LanguageService.tr('disclaimer_title'),
+                    style: TextStyle(
+                      color: primaryTxt,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    LanguageService.tr('disclaimer_text'),
+                    style: TextStyle(
+                      color: secondaryTxt,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    LanguageService.tr('data_sources_title'),
+                    style: TextStyle(
+                      color: primaryTxt,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    LanguageService.tr('data_sources_text'),
+                    style: TextStyle(
+                      color: secondaryTxt,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: isDark
+                            ? ThemeService.bgElev
+                            : const Color(0xFFE0E0E0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        LanguageService.tr('ok'),
+                        style: TextStyle(
+                          color: primaryTxt,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -396,16 +543,33 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
         Positioned(
           top: 16,
           right: 16,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: Icon(Icons.language_rounded, color: isDark ? Colors.white70 : Colors.black87),
-              onPressed: _showLanguageSheet,
-              tooltip: LanguageService.tr('language'),
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.info_outline_rounded, color: isDark ? Colors.white70 : Colors.black87),
+                  onPressed: () => _showDisclaimerPopup(force: true),
+                  tooltip: LanguageService.tr('about_app_disclaimer'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.language_rounded, color: isDark ? Colors.white70 : Colors.black87),
+                  onPressed: _showLanguageSheet,
+                  tooltip: LanguageService.tr('language'),
+                ),
+              ),
+            ],
           ),
         ),
       ],

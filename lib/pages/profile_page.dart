@@ -147,6 +147,128 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showDisclaimerDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          decoration: BoxDecoration(
+            color: _cardBackground,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 32,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF607D8B).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF607D8B),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        LanguageService.tr('about_app_disclaimer'),
+                        style: TextStyle(
+                          color: _primaryText,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  LanguageService.tr('disclaimer_title'),
+                  style: TextStyle(
+                    color: _primaryText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  LanguageService.tr('disclaimer_text'),
+                  style: TextStyle(
+                    color: _secondaryText,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  LanguageService.tr('data_sources_title'),
+                  style: TextStyle(
+                    color: _primaryText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  LanguageService.tr('data_sources_text'),
+                  style: TextStyle(
+                    color: _secondaryText,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: isDarkMode
+                          ? ThemeService.bgElev
+                          : const Color(0xFFF0F0F0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      LanguageService.tr('ok'),
+                      style: TextStyle(
+                        color: _primaryText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>();
@@ -677,6 +799,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           }
                         }
                       },
+                      showArrow: true,
+                    ),
+                    Divider(height: 1, indent: 56, color: _dividerColor),
+                    _buildListItem(
+                      icon: Icons.info_outline,
+                      iconColor: const Color(0xFF607D8B),
+                      title: LanguageService.tr('about_app_disclaimer'),
+                      subtitle: LanguageService.tr('data_sources_and_disclaimer'),
+                      onTap: () => _showDisclaimerDialog(context),
                       showArrow: true,
                     ),
                   ],

@@ -257,5 +257,11 @@
   "onboarding_loc_title": "अपना निर्वाचन\nक्षेत्र चुनें",
   "onboarding_loc_subtitle": "हम आपको प्रासंगिक प्रतिनिधि और स्थानीय समाचार दिखाएंगे",
   "continue_text": "जारी रखें",
-  "get_started": "शुरू करें"
+  "get_started": "शुरू करें",
+  "about_app_disclaimer": "About & Disclaimer",
+  "data_sources_and_disclaimer": "Data sources and non-affiliation",
+  "disclaimer_title": "Disclaimer (Non-Affiliation)",
+  "disclaimer_text": "Rate My Mantri is an independent, non-governmental platform. We are not affiliated with, endorsed by, or representative of any government entity.",
+  "data_sources_title": "Data Sources",
+  "data_sources_text": "Information provided in this app is aggregated from publicly available sources such as the Election Commission of India (eci.gov.in), MyNeta (myneta.info), and open government data portals."
 }

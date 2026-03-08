@@ -257,5 +257,11 @@
   "onboarding_loc_title": "আপনার নির্বাচনী\nক্ষেত্র নির্বাচন করুন",
   "onboarding_loc_subtitle": "আমরা আপনাকে প্রাসঙ্গিক প্রতিনিধি এবং স্থানীয় সংবাদ দেখাব",
   "continue_text": "চালিয়ে যান",
-  "get_started": "শুরু করুন"
+  "get_started": "শুরু করুন",
+  "about_app_disclaimer": "About & Disclaimer",
+  "data_sources_and_disclaimer": "Data sources and non-affiliation",
+  "disclaimer_title": "Disclaimer (Non-Affiliation)",
+  "disclaimer_text": "Rate My Mantri is an independent, non-governmental platform. We are not affiliated with, endorsed by, or representative of any government entity.",
+  "data_sources_title": "Data Sources",
+  "data_sources_text": "Information provided in this app is aggregated from publicly available sources such as the Election Commission of India (eci.gov.in), MyNeta (myneta.info), and open government data portals."
 }

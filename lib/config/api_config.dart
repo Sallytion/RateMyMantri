@@ -7,5 +7,6 @@ class ApiConfig {
 
   static const String baseUrl = 'https://ratemymantri.sallytion.qzz.io';
   static const String v2 = '$baseUrl/v2';
+  static const String v3 = '$baseUrl/v3';
   static const String api = '$baseUrl/api';
 }

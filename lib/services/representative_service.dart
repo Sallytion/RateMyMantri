@@ -3,12 +3,21 @@ import '../models/representative.dart';
 import '../models/representative_detail.dart';
 import '../config/api_config.dart';
 import '../config/api_client.dart';
+import 'auth_storage_service.dart';
 import 'cache_service.dart';
 import 'language_service.dart';
 
 class RepresentativeService {
-  static String get baseUrl => ApiConfig.v2;
+  static String get baseUrl => ApiConfig.v3;
   static const Duration _cacheTtl = Duration(minutes: 5);
+
+  /// Returns headers with a valid JWT Bearer token, or empty headers if the
+  /// user is not signed in (v3 requires auth on every request).
+  static Future<Map<String, String>> _authHeaders() async {
+    final token = await AuthStorageService.getValidAccessToken();
+    if (token == null || token.isEmpty) return {};
+    return {'Authorization': 'Bearer $token'};
+  }
 
   Future<Map<String, dynamic>> searchRepresentatives(
     String query, {
@@ -32,7 +41,7 @@ class RepresentativeService {
           'lang': LanguageService.languageCode,
         },
       );
-      final response = await ApiClient.instance.get(uri);
+      final response = await ApiClient.instance.get(uri, headers: await _authHeaders());
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -78,7 +87,7 @@ class RepresentativeService {
           'lang': LanguageService.languageCode,
         },
       );
-      final response = await ApiClient.instance.get(uri);
+      final response = await ApiClient.instance.get(uri, headers: await _authHeaders());
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -150,11 +159,11 @@ class RepresentativeService {
       final uri = Uri.parse('$baseUrl/representatives/$id').replace(
         queryParameters: {'lang': LanguageService.languageCode},
       );
-      final response = await ApiClient.instance.get(uri);
+      final response = await ApiClient.instance.get(uri, headers: await _authHeaders());
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // V2 API returns {success: true, data: {...}}
+        // V3 API returns {success: true, data: {...}}
         if (data['success'] == true && data['data'] != null) {
           final detailJson = data['data'] as Map<String, dynamic>;
           CacheService.cacheData(cacheKey, detailJson, ttl: _cacheTtl);
