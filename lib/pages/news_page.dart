@@ -325,7 +325,7 @@ class _NewsPageState extends State<NewsPage> {
   Widget build(BuildContext context) {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
     return Scaffold(
-      backgroundColor: isDarkMode ? ThemeService.bgAlt : Colors.white,
+      backgroundColor: isDarkMode ? ThemeService.bgAlt : ThemeService.lightBg,
       body: Column(
         children: [
           SafeArea(
@@ -338,10 +338,10 @@ class _NewsPageState extends State<NewsPage> {
                   child: Text(
                     LanguageService.tr('news'),
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : const Color(0xFF222222),
-                      letterSpacing: -0.3,
+                      fontSize: ThemeService.titleSize,
+                      fontWeight: FontWeight.w800,
+                      color: isDarkMode ? Colors.white : ThemeService.lightText,
+                      letterSpacing: -0.5,
                     ),
                   ),
                 ),
@@ -356,8 +356,33 @@ class _NewsPageState extends State<NewsPage> {
                     final t = _tags[idx];
                     final selected = t == _selectedTag;
                     return ChoiceChip(
-                      label: Text(LanguageService.tr(t.toLowerCase())),
+                      label: Text(
+                        LanguageService.tr(t.toLowerCase()),
+                        style: TextStyle(
+                          color: selected
+                              ? Colors.white
+                              : isDarkMode
+                                  ? Colors.white70
+                                  : ThemeService.lightText,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
                       selected: selected,
+                      selectedColor: ThemeService.accent,
+                      backgroundColor: isDarkMode
+                          ? ThemeService.bgCard
+                          : ThemeService.lightCard,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(ThemeService.chipRadius),
+                        side: BorderSide(
+                          color: selected
+                              ? Colors.transparent
+                              : isDarkMode
+                                  ? ThemeService.bgBorder
+                                  : ThemeService.lightBorder,
+                        ),
+                      ),
+                      showCheckmark: false,
                       onSelected: (sel) async {
                         final messenger = ScaffoldMessenger.of(context);
                         setState(() {
@@ -430,7 +455,12 @@ class _NewsPageState extends State<NewsPage> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(16),
-                            child: Text('${LanguageService.tr('error_prefix')}: $_error'),
+                            child: Text(
+                              '${LanguageService.tr('error_prefix')}: $_error',
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white : ThemeService.lightText,
+                              ),
+                            ),
                           ),
                         ],
                       )
@@ -530,7 +560,7 @@ class _NewsPageState extends State<NewsPage> {
                                           children: [
                                             Container(
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.3),
+                                                color: Colors.black.withValues(alpha: 0.4),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: IconButton(
@@ -593,7 +623,7 @@ class _NewsPageState extends State<NewsPage> {
                                             const SizedBox(width: 8),
                                             Container(
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.3),
+                                                color: Colors.black.withValues(alpha: 0.4),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: IconButton(
@@ -619,7 +649,7 @@ class _NewsPageState extends State<NewsPage> {
                                               LanguageService.translitName(a.title),
                                               style: const TextStyle(
                                                 color: Colors.white,
-                                                fontSize: 28,
+                                                fontSize: 26,
                                                 fontWeight: FontWeight.bold,
                                                 height: 1.2,
                                               ),

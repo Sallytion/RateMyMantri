@@ -40,6 +40,30 @@ class ThemeService {
   /// Border / divider  (#3A3A3A or #1A1A1A)
   static Color get bgBorder => _amoled ? const Color(0xFF1A1A1A) : const Color(0xFF3A3A3A);
 
+  // ─── Modern light-mode palette ──────────────────────────────────
+  static const Color lightBg      = Color(0xFFF5F3EE);  // warm cream
+  static const Color lightBgAlt   = Color(0xFFF0EDE6);  // slightly darker cream
+  static const Color lightCard    = Color(0xFFFFFFFF);   // white card
+  static const Color lightCardAlt = Color(0xFFF8F6F1);   // tinted card
+  static const Color lightBorder  = Color(0xFFE8E4DC);   // warm border
+  static const Color lightText    = Color(0xFF1A1A2E);   // deep navy text
+  static const Color lightSubtext = Color(0xFF6B7280);   // modern grey
+
+  // ─── Pastel accent tints (for cards, badges, tags) ────────────
+  static const Color pastelGreen    = Color(0xFFDFF5E3);
+  static const Color pastelYellow   = Color(0xFFFFF6D6);
+  static const Color pastelLavender = Color(0xFFEDE5FB);
+  static const Color pastelPeach    = Color(0xFFFEE8E0);
+  static const Color pastelBlue     = Color(0xFFDCEEFD);
+  static const Color pastelMint     = Color(0xFFD7F0ED);
+
+  // ─── Design constants ─────────────────────────────────────────
+  static const double cardRadius  = 24.0;
+  static const double smallRadius = 14.0;
+  static const double chipRadius  = 12.0;
+  static const double titleSize   = 30.0;
+  static const double sectionSize = 20.0;
+
   // Available accent colors
   static const List<Color> accentColors = [
     Color(0xFFFF385C), // Default red/pink

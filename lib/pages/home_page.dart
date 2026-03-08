@@ -1,4 +1,4 @@
-﻿import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -62,7 +62,7 @@ class _HomePageState extends State<HomePage> {
   /// build() calls context.watch to subscribe; helpers use this getter.
   bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
 
-  // â”€â”€â”€ Static in-memory cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Static in-memory cache (survives widget rebuilds) ─────────
   static Constituency? _cachedConstituency;
   static List<Representative>? _cachedRepresentatives;
   static List<_HomeArticle>? _cachedNewsArticles;
@@ -114,11 +114,11 @@ class _HomePageState extends State<HomePage> {
   void _onConstituencyNotified() {
     final c = ConstituencyNotifier.instance.current;
     if (c == null || c.id == _currentConstituency?.id) return;
-    // We already have the full Constituency object â€” apply immediately,
+    // We already have the full Constituency object – apply immediately,
     // no API round-trip needed.
     _cachedConstituency = c;
     _cachedRepresentatives = null;
-    // Constituency changed â€” also invalidate news cache so we fetch for new area
+    // Constituency changed – also invalidate news cache so we fetch for new area
     _cachedNewsArticles = null;
     _newsFetchedThisSession = false;
     setState(() {
@@ -325,10 +325,10 @@ class _HomePageState extends State<HomePage> {
         _currentConstituency = result;
       });
       _cachedConstituency = result;
-      // Constituency changed â€” invalidate representative cache and refetch
+      // Constituency changed – invalidate representative cache and refetch
       _cachedRepresentatives = null;
       _loadRepresentatives(result.nameEn);
-      // Constituency changed â€” also invalidate news cache and refetch
+      // Constituency changed – also invalidate news cache and refetch
       _cachedNewsArticles = null;
       _newsFetchedThisSession = false;
       _loadLocalNews();
@@ -351,7 +351,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: isDarkMode
           ? ThemeService.bgMain
-          : const Color(0xFFF7F7F7),
+          : ThemeService.lightBg,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -365,12 +365,12 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       LanguageService.tr('home'),
                       style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
+                        fontSize: ThemeService.titleSize,
+                        fontWeight: FontWeight.w800,
                         color: isDarkMode
                             ? Colors.white
-                            : const Color(0xFF222222),
-                        letterSpacing: -0.3,
+                            : ThemeService.lightText,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     GestureDetector(
@@ -383,8 +383,14 @@ class _HomePageState extends State<HomePage> {
                         decoration: BoxDecoration(
                           color: isDarkMode
                               ? ThemeService.bgElev
-                              : const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(20),
+                              : ThemeService.lightCardAlt,
+                          borderRadius: BorderRadius.circular(24),
+                          border: isDarkMode
+                              ? null
+                              : Border.all(
+                                  color: ThemeService.lightBorder,
+                                  width: 1,
+                                ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -394,7 +400,7 @@ class _HomePageState extends State<HomePage> {
                               size: 15,
                               color: isDarkMode
                                   ? const Color(0xFFB0B0B0)
-                                  : const Color(0xFF717171),
+                                  : ThemeService.lightSubtext,
                             ),
                             const SizedBox(width: 4),
                             _isLoadingConstituency
@@ -415,7 +421,7 @@ class _HomePageState extends State<HomePage> {
                                       fontWeight: FontWeight.w500,
                                       color: isDarkMode
                                           ? const Color(0xFFB0B0B0)
-                                          : const Color(0xFF717171),
+                                          : ThemeService.lightSubtext,
                                     ),
                                   ),
                             const SizedBox(width: 2),
@@ -424,7 +430,7 @@ class _HomePageState extends State<HomePage> {
                               size: 16,
                               color: isDarkMode
                                   ? const Color(0xFFB0B0B0)
-                                  : const Color(0xFF717171),
+                                  : ThemeService.lightSubtext,
                             ),
                           ],
                         ),
@@ -443,7 +449,7 @@ class _HomePageState extends State<HomePage> {
             // Local News Section (returns List<Widget> of slivers)
             ..._buildNewsSlivers(),
 
-            // API-driven banner sections (Noticeboard, Games, â€¦)
+            // API-driven banner sections (Noticeboard, Games, …)
             ..._buildApiSections(),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -453,7 +459,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // â”€â”€â”€ Representatives Swipable Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Representatives Swipable Cards ────────────────────────────
 
   Widget _buildRepresentativesSection() {
     if (_isLoadingRepresentatives) {
@@ -466,24 +472,44 @@ class _HomePageState extends State<HomePage> {
         child: Container(
           height: 160,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF5A5A5A), Color(0xFF3A3A3A)],
-            ),
-            borderRadius: BorderRadius.circular(16),
+            gradient: isDarkMode
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF5A5A5A), Color(0xFF3A3A3A)],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      ThemeService.pastelLavender,
+                      ThemeService.pastelBlue,
+                    ],
+                  ),
+            borderRadius: BorderRadius.circular(ThemeService.cardRadius),
           ),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.location_off, color: Colors.white54, size: 40),
+                Icon(
+                  Icons.location_off,
+                  color: isDarkMode
+                      ? Colors.white54
+                      : ThemeService.lightSubtext,
+                  size: 40,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   _currentConstituency == null
                       ? LanguageService.tr('set_constituency')
                       : LanguageService.tr('no_reps_found'),
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  style: TextStyle(
+                    color: isDarkMode
+                        ? Colors.white70
+                        : ThemeService.lightText,
+                    fontSize: 16,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (_currentConstituency == null) ...[
@@ -491,7 +517,7 @@ class _HomePageState extends State<HomePage> {
                   ElevatedButton(
                     onPressed: _navigateToConstituencySearch,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF7A59),
+                      backgroundColor: ThemeService.accent,
                       foregroundColor: Colors.white,
                     ),
                     child: Text(LanguageService.tr('set_location')),
@@ -548,7 +574,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Dot indicator: renders ALL dots in a clipped scrollable row.
   /// The strip scrolls (via [_dotScrollController]) so the active dot
-  /// is always centered â€” giving a true sliding animation.
+  /// is always centered – giving a true sliding animation.
   Widget _buildRepDots() {
     final int total = _representatives.length;
     if (total <= 1) return const SizedBox.shrink();
@@ -574,10 +600,10 @@ class _HomePageState extends State<HomePage> {
             width: isActive ? activeDotW : inactiveDotW,
             decoration: BoxDecoration(
               color: isActive
-                  ? const Color(0xFFFF7A59)
+                  ? ThemeService.accent
                   : (isDarkMode
                       ? const Color(0xFF4A4A4A)
-                      : const Color(0xFFDDDDDD)),
+                      : ThemeService.lightBorder),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -585,7 +611,7 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // â‰¤ 7 reps: just a plain row, no scrolling needed.
+    // ≤ 7 reps: just a plain row, no scrolling needed.
     if (total <= maxVisible) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -610,6 +636,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Pastel tint color for representative cards based on index.
+  Color _pastelForIndex(int index) {
+    const pastels = [
+      ThemeService.pastelGreen,
+      ThemeService.pastelLavender,
+      ThemeService.pastelBlue,
+      ThemeService.pastelMint,
+      ThemeService.pastelPeach,
+      ThemeService.pastelYellow,
+    ];
+    return pastels[index % pastels.length];
+  }
+
   Widget _buildRepresentativeCard(Representative rep) {
     final partyColor = _getPartyColor(rep.party);
     final officeLabel = _getOfficeLabel(rep.officeType);
@@ -617,21 +656,34 @@ class _HomePageState extends State<HomePage> {
     final fullStars = rating != null ? rating.floor() : 0;
     final hasHalfStar = rating != null && (rating - fullStars) >= 0.25;
     final emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    final repIndex = _representatives.indexOf(rep);
+    final pastelTint = _pastelForIndex(repIndex >= 0 ? repIndex : 0);
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            partyColor.withValues(alpha: 0.9),
-            partyColor.withValues(alpha: 0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        gradient: isDarkMode
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  partyColor.withValues(alpha: 0.9),
+                  partyColor.withValues(alpha: 0.7),
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  partyColor.withValues(alpha: 0.85),
+                  Color.lerp(partyColor, pastelTint, 0.3)!.withValues(alpha: 0.75),
+                ],
+              ),
+        borderRadius: BorderRadius.circular(ThemeService.cardRadius),
         boxShadow: [
           BoxShadow(
-            color: partyColor.withValues(alpha: 0.3),
+            color: isDarkMode
+                ? partyColor.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -646,9 +698,9 @@ class _HomePageState extends State<HomePage> {
               bottom: 0,
               top: 0,
               child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(ThemeService.cardRadius),
+                  bottomRight: Radius.circular(ThemeService.cardRadius),
                 ),
                 child: ShaderMask(
                   shaderCallback: (rect) => LinearGradient(
@@ -842,7 +894,7 @@ class _HomePageState extends State<HomePage> {
     }).join(' ');
   }
 
-  // â”€â”€â”€ API-driven Banner Sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── API-driven Banner Sections ──────────────────────────────────
 
   /// Fetches sections from the backend and stores them in state.
   Future<void> _loadHomeSections() async {
@@ -894,6 +946,19 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Pastel color for API section banners based on section index.
+  Color _sectionPastel(int index) {
+    const pastels = [
+      ThemeService.pastelYellow,
+      ThemeService.pastelLavender,
+      ThemeService.pastelPeach,
+      ThemeService.pastelMint,
+      ThemeService.pastelBlue,
+      ThemeService.pastelGreen,
+    ];
+    return pastels[index % pastels.length];
+  }
+
   /// Builds section slivers from the API response.
   /// Shows a shimmer placeholder while loading; hides completely on empty list.
   List<Widget> _buildApiSections() {
@@ -935,22 +1000,23 @@ class _HomePageState extends State<HomePage> {
     if (_homeSections.isEmpty) return [];
 
     final slivers = <Widget>[];
-    for (final section in _homeSections) {
+    for (int i = 0; i < _homeSections.length; i++) {
+      final section = _homeSections[i];
       if (section.type == 'webview_banner') {
         slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 16)));
         slivers.add(
           SliverToBoxAdapter(
-            child: _buildWebviewBannerCard(section),
+            child: _buildWebviewBannerCard(section, i),
           ),
         );
       }
-      // Unknown types are silently skipped (per Â§11 of the spec)
+      // Unknown types are silently skipped (per §11 of the spec)
     }
     return slivers;
   }
 
   /// Renders a single `webview_banner` section card.
-  Widget _buildWebviewBannerCard(HomeSection section) {
+  Widget _buildWebviewBannerCard(HomeSection section, int sectionIndex) {
     final icon = _iconFromString(section.icon);
     final webviewTitle = section.webviewTitle!;
 
@@ -982,16 +1048,16 @@ class _HomePageState extends State<HomePage> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: const Color(0xFFFF7A59)),
+              Icon(icon, size: 20, color: ThemeService.accent),
               const SizedBox(width: 8),
               Text(
                 section.title,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
+                  fontSize: ThemeService.sectionSize,
+                  fontWeight: FontWeight.w700,
                   color: isDarkMode
                       ? Colors.white
-                      : const Color(0xFF222222),
+                      : ThemeService.lightText,
                 ),
               ),
             ],
@@ -1009,7 +1075,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ThemeService.cardRadius),
               child: CachedNetworkImage(
                 imageUrl: bannerImageUrl,
                 fit: BoxFit.cover,
@@ -1019,8 +1085,8 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: isDarkMode
                         ? ThemeService.bgElev
-                        : const Color(0xFFF0F0F0),
-                    borderRadius: BorderRadius.circular(16),
+                        : _sectionPastel(sectionIndex),
+                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
                   ),
                 ),
                 errorWidget: (_, __, ___) => Container(
@@ -1029,15 +1095,15 @@ class _HomePageState extends State<HomePage> {
                     gradient: LinearGradient(
                       colors: isDarkMode
                           ? [const Color(0xFF1a1d27), const Color(0xFF0f1117)]
-                          : [const Color(0xFFFFF7EE), const Color(0xFFFFE0CC)],
+                          : [_sectionPastel(sectionIndex), _sectionPastel(sectionIndex).withValues(alpha: 0.6)],
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
                   ),
                   child: Center(
                     child: Icon(
                       icon,
                       size: 48,
-                      color: const Color(0xFFFF7A59),
+                      color: ThemeService.accent,
                     ),
                   ),
                 ),
@@ -1049,7 +1115,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // â”€â”€â”€ News Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── News Section ──────────────────────────────────────────────
 
   List<Widget> _buildNewsSlivers() {
     return [
@@ -1064,11 +1130,11 @@ class _HomePageState extends State<HomePage> {
                 child: Text(
                   LanguageService.tr('local_news'),
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                    fontSize: ThemeService.sectionSize,
+                    fontWeight: FontWeight.w700,
                     color: isDarkMode
                         ? Colors.white
-                        : const Color(0xFF222222),
+                        : ThemeService.lightText,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1086,14 +1152,14 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFFFF7A59),
+                        color: ThemeService.accent,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward,
                       size: 18,
-                      color: Color(0xFFFF7A59),
+                      color: ThemeService.accent,
                     ),
                   ],
                 ),
@@ -1114,14 +1180,18 @@ class _HomePageState extends State<HomePage> {
             child: Container(
               height: 100,
               decoration: BoxDecoration(
-                color: isDarkMode ? ThemeService.bgElev : Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: isDarkMode
+                    ? ThemeService.bgElev
+                    : ThemeService.lightCard,
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
               ),
               child: Center(
                 child: Text(
                   LanguageService.tr('no_news_available'),
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white54 : Colors.grey,
+                    color: isDarkMode
+                        ? Colors.white54
+                        : ThemeService.lightSubtext,
                   ),
                 ),
               ),
@@ -1176,11 +1246,13 @@ class _HomePageState extends State<HomePage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? ThemeService.bgElev : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isDarkMode
+              ? ThemeService.bgElev
+              : ThemeService.lightCard,
+          borderRadius: BorderRadius.circular(ThemeService.cardRadius),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.06),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -1190,9 +1262,9 @@ class _HomePageState extends State<HomePage> {
           children: [
             // Thumbnail
             ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                bottomLeft: Radius.circular(12),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(ThemeService.cardRadius),
+                bottomLeft: Radius.circular(ThemeService.cardRadius),
               ),
               child: SizedBox(
                 width: 100,
@@ -1209,13 +1281,29 @@ class _HomePageState extends State<HomePage> {
                           child: Container(color: Colors.white),
                         ),
                         errorWidget: (_, _, _) => Container(
-                          color: const Color(0xFFE0E0E0),
-                          child: const Icon(Icons.article, color: Color(0xFFBDBDBD), size: 32),
+                          color: isDarkMode
+                              ? ThemeService.bgBorder
+                              : ThemeService.lightCardAlt,
+                          child: Icon(
+                            Icons.article,
+                            color: isDarkMode
+                                ? const Color(0xFFBDBDBD)
+                                : ThemeService.lightSubtext,
+                            size: 32,
+                          ),
                         ),
                       )
                     : Container(
-                        color: isDarkMode ? ThemeService.bgBorder : const Color(0xFFE0E0E0),
-                        child: const Icon(Icons.article, color: Color(0xFFBDBDBD), size: 32),
+                        color: isDarkMode
+                            ? ThemeService.bgBorder
+                            : ThemeService.lightCardAlt,
+                        child: Icon(
+                          Icons.article,
+                          color: isDarkMode
+                              ? const Color(0xFFBDBDBD)
+                              : ThemeService.lightSubtext,
+                          size: 32,
+                        ),
                       ),
               ),
             ),
@@ -1232,7 +1320,7 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFFFF7A59),
+                          color: ThemeService.accent,
                         ),
                       ),
                     const SizedBox(height: 4),
@@ -1243,7 +1331,7 @@ class _HomePageState extends State<HomePage> {
                         fontWeight: FontWeight.w600,
                         color: isDarkMode
                             ? Colors.white
-                            : const Color(0xFF222222),
+                            : ThemeService.lightText,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1255,7 +1343,7 @@ class _HomePageState extends State<HomePage> {
                         fontSize: 12,
                         color: isDarkMode
                             ? const Color(0xFF717171)
-                            : const Color(0xFF999999),
+                            : ThemeService.lightSubtext,
                       ),
                     ),
                   ],
@@ -1267,7 +1355,9 @@ class _HomePageState extends State<HomePage> {
               child: Icon(
                 Icons.chevron_right,
                 size: 20,
-                color: isDarkMode ? Colors.white38 : Colors.grey,
+                color: isDarkMode
+                    ? Colors.white38
+                    : ThemeService.lightSubtext,
               ),
             ),
           ],

@@ -1,4 +1,4 @@
-﻿import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -30,7 +30,7 @@ class _RatePageState extends State<RatePage> {
   /// Reads the current dark-mode flag from the provider.
   bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
 
-  // â”€â”€â”€ Static in-memory cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Static in-memory cache (survives widget rebuilds) ─────────
   static List<Rating>? _cachedRatings;
   static bool? _cachedIsAuthenticated;
 
@@ -96,8 +96,8 @@ class _RatePageState extends State<RatePage> {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 340),
           decoration: BoxDecoration(
-            color: isDarkMode ? ThemeService.bgElev : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+            borderRadius: BorderRadius.circular(ThemeService.cardRadius),
           ),
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -120,7 +120,7 @@ class _RatePageState extends State<RatePage> {
                 Text(
                   LanguageService.tr('delete_rating'),
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : const Color(0xFF222222),
+                    color: isDarkMode ? Colors.white : ThemeService.lightText,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
@@ -131,7 +131,7 @@ class _RatePageState extends State<RatePage> {
                   '${LanguageService.tr('delete_rating_confirm')}\n${rating.representativeName ?? LanguageService.tr('this_representative')}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
+                    color: isDarkMode ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext,
                     fontSize: 14,
                     height: 1.5,
                   ),
@@ -146,9 +146,9 @@ class _RatePageState extends State<RatePage> {
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           backgroundColor: isDarkMode
                               ? ThemeService.bgBorder
-                              : const Color(0xFFF5F5F5),
+                              : ThemeService.lightCardAlt,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                           ),
                         ),
                         child: Text(
@@ -168,7 +168,7 @@ class _RatePageState extends State<RatePage> {
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           backgroundColor: Colors.red,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                           ),
                         ),
                         child: Text(
@@ -235,7 +235,7 @@ class _RatePageState extends State<RatePage> {
     );
   }
 
-  // â”€â”€â”€ Star bar helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Star bar helper ────────────────────────────────────────────
   Widget _buildStarRow(int stars, {double size = 14}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -244,36 +244,45 @@ class _RatePageState extends State<RatePage> {
         size: size,
         color: i < stars
             ? ThemeService.accent
-            : (isDarkMode ? const Color(0xFF444444) : const Color(0xFFD5D5D5)),
+            : (isDarkMode ? const Color(0xFF444444) : ThemeService.lightBorder),
       )),
     );
   }
 
-  // â”€â”€â”€ Rating card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Rating card ────────────────────────────────────────────────
   Widget _buildRatingCard(Rating rating, {required Color textColor, required Color subtextColor}) {
     final borderColor = isDarkMode
         ? ThemeService.bgBorder
-        : const Color(0xFFEEEEEE);
+        : ThemeService.lightBorder;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDarkMode ? ThemeService.bgCard : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDarkMode ? ThemeService.bgCard : ThemeService.lightCard,
+        borderRadius: BorderRadius.circular(ThemeService.cardRadius),
         border: Border.all(color: borderColor, width: 1),
+        boxShadow: isDarkMode
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFFD4C9B8).withValues(alpha: 0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ThemeService.cardRadius),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ThemeService.cardRadius),
           onTap: () => _editRating(rating),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // â”€â”€ Top row: avatar + name + overall stars â”€â”€
+                // ── Top row: avatar + name + overall stars ──
                 Row(
                   children: [
                     // Circular avatar
@@ -363,7 +372,7 @@ class _RatePageState extends State<RatePage> {
                   ],
                 ),
 
-                // â”€â”€ Star breakdown â”€â”€
+                // ── Star breakdown ──
                 Padding(
                   padding: const EdgeInsets.only(top: 14, bottom: 2),
                   child: Row(
@@ -387,7 +396,7 @@ class _RatePageState extends State<RatePage> {
                   ),
                 ),
 
-                // â”€â”€ Review text â”€â”€
+                // ── Review text ──
                 if (rating.reviewText != null && rating.reviewText!.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -405,7 +414,7 @@ class _RatePageState extends State<RatePage> {
                   ),
                 ],
 
-                // â”€â”€ Footer: status + date + actions â”€â”€
+                // ── Footer: status + date + actions ──
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Row(
@@ -417,7 +426,7 @@ class _RatePageState extends State<RatePage> {
                           color: rating.isVerified
                               ? const Color(0xFF4CAF50).withValues(alpha: 0.1)
                               : subtextColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                         ),
                         child: Text(
                           rating.isAnonymous
@@ -511,7 +520,7 @@ class _RatePageState extends State<RatePage> {
     return Formatters.formatRelativeDate(date);
   }
 
-  // â”€â”€â”€ Empty/auth states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Empty/auth states ──────────────────────────────────────────
   Widget _buildEmptyState({
     required IconData icon,
     required String title,
@@ -559,9 +568,9 @@ class _RatePageState extends State<RatePage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
-    final backgroundColor = isDarkMode ? ThemeService.bgMain : const Color(0xFFF7F7F7);
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF222222);
-    final subtextColor = isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+    final backgroundColor = isDarkMode ? ThemeService.bgMain : ThemeService.lightBg;
+    final textColor = isDarkMode ? Colors.white : ThemeService.lightText;
+    final subtextColor = isDarkMode ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -591,7 +600,7 @@ class _RatePageState extends State<RatePage> {
                       )
                     : Column(
                         children: [
-                          // â”€â”€ Header â”€â”€
+                          // ── Header ──
                           Padding(
                             padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                             child: Row(
@@ -604,9 +613,9 @@ class _RatePageState extends State<RatePage> {
                                         LanguageService.tr('my_ratings'),
                                         style: TextStyle(
                                           color: textColor,
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: -0.3,
+                                          fontSize: ThemeService.titleSize,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.5,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -652,7 +661,7 @@ class _RatePageState extends State<RatePage> {
                             ),
                           ),
 
-                          // â”€â”€ Ratings list â”€â”€
+                          // ── Ratings list ──
                           Expanded(
                             child: RefreshIndicator(
                               color: ThemeService.accent,

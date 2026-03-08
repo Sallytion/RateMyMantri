@@ -21,7 +21,7 @@ class SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeService.lightCard,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
@@ -64,13 +64,13 @@ class RepresentativeCardSkeleton extends StatelessWidget {
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDarkMode ? ThemeService.bgElev : Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+          borderRadius: BorderRadius.circular(ThemeService.cardRadius),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircleAvatar(radius: 32, backgroundColor: Colors.white),
+            CircleAvatar(radius: 32, backgroundColor: isDarkMode ? Colors.white : ThemeService.lightCard),
             const SizedBox(height: 10),
             const SkeletonBox(width: 100, height: 14),
             const SizedBox(height: 6),
@@ -125,8 +125,8 @@ class NewsArticleSkeleton extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+                color: isDarkMode ? Colors.white : ThemeService.lightCard,
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
               ),
             ),
             const SizedBox(width: 14),
@@ -189,13 +189,13 @@ class NewsPageSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image placeholder  
+            // Image placeholder
             Expanded(
               flex: 3,
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDarkMode ? Colors.white : ThemeService.lightCard,
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
@@ -239,7 +239,7 @@ class RepresentativeDetailSkeleton extends StatelessWidget {
           children: [
             const SizedBox(height: 40),
             // Avatar
-            const CircleAvatar(radius: 60, backgroundColor: Colors.white),
+            CircleAvatar(radius: 60, backgroundColor: isDarkMode ? Colors.white : ThemeService.lightCard),
             const SizedBox(height: 20),
             // Name
             const SkeletonBox(width: 200, height: 22),
@@ -252,19 +252,19 @@ class RepresentativeDetailSkeleton extends StatelessWidget {
             // Stats cards row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: const [
-                SkeletonBox(width: 100, height: 80, borderRadius: 14),
-                SkeletonBox(width: 100, height: 80, borderRadius: 14),
-                SkeletonBox(width: 100, height: 80, borderRadius: 14),
+              children: [
+                SkeletonBox(width: 100, height: 80, borderRadius: ThemeService.cardRadius),
+                SkeletonBox(width: 100, height: 80, borderRadius: ThemeService.cardRadius),
+                SkeletonBox(width: 100, height: 80, borderRadius: ThemeService.cardRadius),
               ],
             ),
             const SizedBox(height: 30),
             // Info sections
-            const SkeletonBox(height: 120, borderRadius: 14),
+            SkeletonBox(height: 120, borderRadius: ThemeService.cardRadius),
             const SizedBox(height: 16),
-            const SkeletonBox(height: 120, borderRadius: 14),
+            SkeletonBox(height: 120, borderRadius: ThemeService.cardRadius),
             const SizedBox(height: 16),
-            const SkeletonBox(height: 80, borderRadius: 14),
+            SkeletonBox(height: 80, borderRadius: ThemeService.cardRadius),
           ],
         ),
       ),
@@ -286,7 +286,7 @@ class SearchResultSkeleton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         child: Row(
           children: [
-            const CircleAvatar(radius: 28, backgroundColor: Colors.white),
+            CircleAvatar(radius: 28, backgroundColor: isDarkMode ? Colors.white : ThemeService.lightCard),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -325,14 +325,14 @@ class MapRepListSkeleton extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDarkMode ? Colors.white : ThemeService.lightCard,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
-                children: const [
-                  CircleAvatar(radius: 26, backgroundColor: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
+                children: [
+                  CircleAvatar(radius: 26, backgroundColor: isDarkMode ? Colors.white : ThemeService.lightCard),
+                  const SizedBox(width: 12),
+                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

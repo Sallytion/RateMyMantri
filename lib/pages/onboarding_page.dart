@@ -80,7 +80,7 @@ class _OnboardingPageState extends State<OnboardingPage>
       // Save language preference
       context.read<LanguageProvider>().setLanguage(_selectedLanguage);
     }
-    
+
     if (_currentPage < totalPages - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 500),
@@ -157,7 +157,7 @@ class _OnboardingPageState extends State<OnboardingPage>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? ThemeService.bgMain : const Color(0xFFFAFAFA);
+    final bgColor = isDark ? ThemeService.bgMain : ThemeService.lightBg;
 
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -190,7 +190,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                               ? ThemeService.accent
                               : (isDark
                                   ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.08)),
+                                  : ThemeService.lightBorder),
                         ),
                       ),
                     );
@@ -238,7 +238,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                               style: TextStyle(
                                 color: isDark
                                     ? Colors.white54
-                                    : const Color(0xFF999999),
+                                    : ThemeService.lightSubtext,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -264,7 +264,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                           ),
                         ),
                         child: Text(
@@ -292,7 +292,7 @@ class _OnboardingPageState extends State<OnboardingPage>
   // ─── Language Selection Page ────────────────────────────────────
 
   Widget _buildLanguagePage(bool isDark) {
-    final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
+    final textColor = isDark ? Colors.white : ThemeService.lightText;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -305,7 +305,9 @@ class _OnboardingPageState extends State<OnboardingPage>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: ThemeService.accent.withValues(alpha: 0.1),
+              color: isDark
+                  ? ThemeService.accent.withValues(alpha: 0.1)
+                  : ThemeService.pastelLavender,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
@@ -320,8 +322,8 @@ class _OnboardingPageState extends State<OnboardingPage>
           Text(
             LanguageService.tr('onboarding_lang_title'),
             style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
               color: textColor,
               height: 1.2,
               letterSpacing: -0.5,
@@ -334,7 +336,7 @@ class _OnboardingPageState extends State<OnboardingPage>
             LanguageService.tr('onboarding_lang_subtitle'),
             style: TextStyle(
               fontSize: 15,
-              color: textColor.withValues(alpha: 0.5),
+              color: isDark ? textColor.withValues(alpha: 0.5) : ThemeService.lightSubtext,
               height: 1.4,
             ),
           ),
@@ -367,14 +369,14 @@ class _OnboardingPageState extends State<OnboardingPage>
                           ? ThemeService.accent.withValues(alpha: 0.08)
                           : (isDark
                               ? ThemeService.bgElev
-                              : Colors.white),
-                      borderRadius: BorderRadius.circular(14),
+                              : ThemeService.lightCard),
+                      borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                       border: Border.all(
                         color: isSelected
                             ? ThemeService.accent.withValues(alpha: 0.4)
                             : (isDark
                                 ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.black.withValues(alpha: 0.06)),
+                                : ThemeService.lightBorder),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -395,7 +397,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                           lang['name']!,
                           style: TextStyle(
                             fontSize: 14,
-                            color: textColor.withValues(alpha: 0.4),
+                            color: isDark
+                                ? textColor.withValues(alpha: 0.4)
+                                : ThemeService.lightSubtext,
                           ),
                         ),
                         const Spacer(),
@@ -431,8 +435,8 @@ class _OnboardingPageState extends State<OnboardingPage>
   // ─── Constituency Selection Page ───────────────────────────────
 
   Widget _buildConstituencyPage(bool isDark) {
-    final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
-    final cardColor = isDark ? ThemeService.bgElev : Colors.white;
+    final textColor = isDark ? Colors.white : ThemeService.lightText;
+    final cardColor = isDark ? ThemeService.bgElev : ThemeService.lightCard;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -445,7 +449,9 @@ class _OnboardingPageState extends State<OnboardingPage>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: ThemeService.accent.withValues(alpha: 0.1),
+              color: isDark
+                  ? ThemeService.accent.withValues(alpha: 0.1)
+                  : ThemeService.pastelLavender,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
@@ -460,8 +466,8 @@ class _OnboardingPageState extends State<OnboardingPage>
           Text(
             LanguageService.tr('onboarding_loc_title'),
             style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
               color: textColor,
               height: 1.2,
               letterSpacing: -0.5,
@@ -474,7 +480,7 @@ class _OnboardingPageState extends State<OnboardingPage>
             LanguageService.tr('onboarding_loc_subtitle'),
             style: TextStyle(
               fontSize: 15,
-              color: textColor.withValues(alpha: 0.5),
+              color: isDark ? textColor.withValues(alpha: 0.5) : ThemeService.lightSubtext,
               height: 1.4,
             ),
           ),
@@ -488,7 +494,7 @@ class _OnboardingPageState extends State<OnboardingPage>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: ThemeService.accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                 border: Border.all(
                     color: ThemeService.accent.withValues(alpha: 0.3)),
               ),
@@ -506,7 +512,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: textColor.withValues(alpha: 0.5),
+                            color: isDark
+                                ? textColor.withValues(alpha: 0.5)
+                                : ThemeService.lightSubtext,
                             letterSpacing: 0.3,
                           ),
                         ),
@@ -533,18 +541,25 @@ class _OnboardingPageState extends State<OnboardingPage>
             decoration: InputDecoration(
               hintText: LanguageService.tr('search_constituency_hint'),
               hintStyle: TextStyle(
-                color: textColor.withValues(alpha: 0.35),
+                color: isDark
+                    ? textColor.withValues(alpha: 0.35)
+                    : ThemeService.lightSubtext,
                 fontSize: 15,
               ),
               prefixIcon: Icon(
                 Icons.search_rounded,
-                color: textColor.withValues(alpha: 0.4),
+                color: isDark
+                    ? textColor.withValues(alpha: 0.4)
+                    : ThemeService.lightSubtext,
                 size: 22,
               ),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: Icon(Icons.close_rounded,
-                          color: textColor.withValues(alpha: 0.4), size: 20),
+                          color: isDark
+                              ? textColor.withValues(alpha: 0.4)
+                              : ThemeService.lightSubtext,
+                          size: 20),
                       onPressed: () {
                         _searchController.clear();
                         setState(() {
@@ -557,23 +572,23 @@ class _OnboardingPageState extends State<OnboardingPage>
               filled: true,
               fillColor: isDark
                   ? ThemeService.bgElev
-                  : Colors.black.withValues(alpha: 0.04),
+                  : ThemeService.lightCard,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                 borderSide: BorderSide(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.04),
+                      : ThemeService.lightBorder,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                 borderSide:
                     BorderSide(color: ThemeService.accent, width: 1.5),
               ),
@@ -604,14 +619,18 @@ class _OnboardingPageState extends State<OnboardingPage>
                             Icon(
                               Icons.map_outlined,
                               size: 48,
-                              color: textColor.withValues(alpha: 0.15),
+                              color: isDark
+                                  ? textColor.withValues(alpha: 0.15)
+                                  : ThemeService.lightBorder,
                             ),
                             const SizedBox(height: 12),
                             Text(
                               LanguageService.tr('search_constituency'),
                               style: TextStyle(
                                 fontSize: 14,
-                                color: textColor.withValues(alpha: 0.35),
+                                color: isDark
+                                    ? textColor.withValues(alpha: 0.35)
+                                    : ThemeService.lightSubtext,
                               ),
                             ),
                           ],
@@ -624,13 +643,17 @@ class _OnboardingPageState extends State<OnboardingPage>
                               children: [
                                 Icon(Icons.search_off_rounded,
                                     size: 48,
-                                    color: textColor.withValues(alpha: 0.15)),
+                                    color: isDark
+                                        ? textColor.withValues(alpha: 0.15)
+                                        : ThemeService.lightBorder),
                                 const SizedBox(height: 12),
                                 Text(
                                   LanguageService.tr('no_constituencies'),
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: textColor.withValues(alpha: 0.35),
+                                    color: isDark
+                                        ? textColor.withValues(alpha: 0.35)
+                                        : ThemeService.lightSubtext,
                                   ),
                                 ),
                               ],
@@ -656,7 +679,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                                         ? ThemeService.accent
                                             .withValues(alpha: 0.08)
                                         : cardColor,
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                                     border: Border.all(
                                       color: isSelected
                                           ? ThemeService.accent
@@ -664,8 +687,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                                           : (isDark
                                               ? Colors.white
                                                   .withValues(alpha: 0.06)
-                                              : Colors.black
-                                                  .withValues(alpha: 0.06)),
+                                              : ThemeService.lightBorder),
                                     ),
                                   ),
                                   child: Row(
@@ -673,8 +695,10 @@ class _OnboardingPageState extends State<OnboardingPage>
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: ThemeService.accent
-                                              .withValues(alpha: 0.1),
+                                          color: isDark
+                                              ? ThemeService.accent
+                                                  .withValues(alpha: 0.1)
+                                              : ThemeService.pastelLavender,
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
@@ -711,8 +735,10 @@ class _OnboardingPageState extends State<OnboardingPage>
                                                       : c.displayType,
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: textColor
-                                                    .withValues(alpha: 0.45),
+                                                color: isDark
+                                                    ? textColor
+                                                        .withValues(alpha: 0.45)
+                                                    : ThemeService.lightSubtext,
                                               ),
                                             ),
                                           ],

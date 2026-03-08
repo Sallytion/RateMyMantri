@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:convert';
 import '../main.dart';
@@ -41,7 +41,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     super.initState();
     // Try silent sign-in on app start
     _trySilentSignIn();
-    
+
     // Check and show disclaimer on first open
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showDisclaimerPopup(force: false);
@@ -163,9 +163,9 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => LanguageSheet(
         isDarkMode: isDark,
-        cardBackground: isDark ? ThemeService.bgElev : const Color(0xFFF7F7F7),
-        primaryText: isDark ? const Color(0xFFFFFFFF) : const Color(0xFF222222),
-        secondaryText: isDark ? const Color(0xFFB0B0B0) : const Color(0xFF717171),
+        cardBackground: isDark ? ThemeService.bgElev : ThemeService.lightCardAlt,
+        primaryText: isDark ? const Color(0xFFFFFFFF) : ThemeService.lightText,
+        secondaryText: isDark ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext,
         onLanguageChanged: (code) {
           context.read<LanguageProvider>().setLanguage(code);
           setState(() {});
@@ -188,9 +188,9 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? ThemeService.bgElev : const Color(0xFFF7F7F7);
-    final primaryTxt = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
-    final secondaryTxt = isDark ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+    final cardBg = isDark ? ThemeService.bgElev : ThemeService.lightCard;
+    final primaryTxt = isDark ? const Color(0xFFFFFFFF) : ThemeService.lightText;
+    final secondaryTxt = isDark ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext;
 
     showDialog(
       context: context,
@@ -202,7 +202,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
           constraints: const BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: cardBg,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(ThemeService.cardRadius),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),
@@ -291,7 +291,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         backgroundColor: isDark
                             ? ThemeService.bgElev
-                            : const Color(0xFFE0E0E0),
+                            : ThemeService.lightBorder,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -318,7 +318,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -349,10 +349,11 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
               Text(
                 LanguageService.tr('welcome_title').replaceAll('\\n', '\n'),
                 style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF222222),
+                  fontSize: 38,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : ThemeService.lightText,
                   height: 1.2,
+                  letterSpacing: -0.8,
                 ),
               ),
 
@@ -362,7 +363,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                 LanguageService.tr('sign_in_desc'),
                 style: TextStyle(
                   fontSize: 16,
-                  color: isDark ? Colors.white70 : const Color(0xFF717171),
+                  color: isDark ? Colors.white70 : ThemeService.lightSubtext,
                   fontWeight: FontWeight.w400,
                   height: 1.5,
                 ),
@@ -378,7 +379,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: isDark ? Colors.red.shade900.withValues(alpha: 0.3) : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                     border: Border.all(
                       color: isDark ? Colors.red.shade700 : Colors.red.shade200,
                     ),
@@ -424,7 +425,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                         TextSpan(
                           text: 'By signing in you agree to our ',
                           style: TextStyle(
-                            color: isDark ? Colors.white70 : const Color(0xFF717171),
+                            color: isDark ? Colors.white70 : ThemeService.lightSubtext,
                             fontSize: 14,
                           ),
                           children: [
@@ -452,13 +453,13 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                 child: ElevatedButton(
                   onPressed: (_isLoading || !_tosAccepted) ? null : _handleSignIn,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? ThemeService.bgElev : Colors.white,
-                    foregroundColor: isDark ? Colors.white : const Color(0xFF222222),
+                    backgroundColor: isDark ? ThemeService.bgElev : ThemeService.lightCard,
+                    foregroundColor: isDark ? Colors.white : ThemeService.lightText,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ThemeService.cardRadius - 10),
                       side: BorderSide(
-                        color: isDark ? const Color(0xFF444444) : const Color(0xFFDDDDDD),
+                        color: isDark ? const Color(0xFF444444) : ThemeService.lightBorder,
                       ),
                     ),
                   ),
@@ -481,7 +482,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: isDark ? ThemeService.bgElev : Colors.white,
+                                color: isDark ? ThemeService.bgElev : ThemeService.lightCard,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Center(
@@ -530,7 +531,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.white54 : const Color(0xFF717171),
+                      color: isDark ? Colors.white54 : ThemeService.lightSubtext,
                     ),
                   ),
                 ),
@@ -548,11 +549,11 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : ThemeService.lightCardAlt,
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: Icon(Icons.info_outline_rounded, color: isDark ? Colors.white70 : Colors.black87),
+                  icon: Icon(Icons.info_outline_rounded, color: isDark ? Colors.white70 : ThemeService.lightText),
                   onPressed: () => _showDisclaimerPopup(force: true),
                   tooltip: LanguageService.tr('about_app_disclaimer'),
                 ),
@@ -560,11 +561,11 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
               const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : ThemeService.lightCardAlt,
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: Icon(Icons.language_rounded, color: isDark ? Colors.white70 : Colors.black87),
+                  icon: Icon(Icons.language_rounded, color: isDark ? Colors.white70 : ThemeService.lightText),
                   onPressed: _showLanguageSheet,
                   tooltip: LanguageService.tr('language'),
                 ),
@@ -578,4 +579,3 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
 );
   }
 }
-

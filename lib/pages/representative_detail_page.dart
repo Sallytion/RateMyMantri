@@ -173,23 +173,40 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.isDarkMode ? ThemeService.bgMain : Colors.white;
+    final bgColor = widget.isDarkMode ? ThemeService.bgMain : ThemeService.lightBg;
     final textColor = widget.isDarkMode
         ? Colors.white
-        : const Color(0xFF222222);
+        : ThemeService.lightText;
+    final subtextColor = widget.isDarkMode
+        ? Colors.white.withValues(alpha: 0.6)
+        : ThemeService.lightSubtext;
     final cardColor = widget.isDarkMode
         ? ThemeService.bgElev
-        : const Color(0xFFF9F9F9);
+        : ThemeService.lightCard;
+    final borderColor = widget.isDarkMode
+        ? ThemeService.bgBorder
+        : ThemeService.lightBorder;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: textColor),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              decoration: BoxDecoration(
+                color: widget.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : ThemeService.lightBorder.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.arrow_back_ios_new, size: 16, color: textColor),
+            ),
+          ),
         ),
         title: Text(
           _detail?.name ?? '',
@@ -213,14 +230,14 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                   Icon(
                     Icons.error_outline,
                     size: 64,
-                    color: textColor.withValues(alpha: 0.5),
+                    color: subtextColor,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     LanguageService.tr('failed_load_details'),
                     style: TextStyle(
                       fontSize: 18,
-                      color: textColor.withValues(alpha: 0.7),
+                      color: subtextColor,
                     ),
                   ),
                 ],
@@ -229,13 +246,13 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildHeader(textColor, cardColor),
-                  _buildStats(textColor, cardColor),
+                  _buildHeader(textColor, subtextColor),
+                  _buildStats(textColor, subtextColor, cardColor, borderColor),
                   const SizedBox(height: 16),
-                  _buildRatingButton(textColor, cardColor),
+                  _buildRatingButton(textColor, subtextColor, cardColor, borderColor),
                   const SizedBox(height: 16),
-                  if (_detail!.totalCases > 0) _buildBadge(textColor),
-                  _buildSections(textColor, cardColor),
+                  if (_detail!.totalCases > 0) _buildBadge(textColor, subtextColor),
+                  _buildSections(textColor, subtextColor, borderColor),
                   const SizedBox(height: 24),
                   _buildRatingsSection(textColor),
                   const SizedBox(height: 32),
@@ -261,7 +278,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     }
   }
 
-  Widget _buildHeader(Color textColor, Color cardColor) {
+  Widget _buildHeader(Color textColor, Color subtextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
@@ -272,7 +289,12 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
             height: 140,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: textColor.withValues(alpha: 0.1), width: 2),
+              border: Border.all(
+                color: widget.isDarkMode
+                    ? textColor.withValues(alpha: 0.1)
+                    : ThemeService.lightBorder,
+                width: 2,
+              ),
             ),
             child: Hero(
               tag: 'rep_avatar_${widget.representativeId}',
@@ -302,8 +324,9 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
             _detail!.name,
             style: TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
               color: textColor,
+              letterSpacing: -0.5,
             ),
             textAlign: TextAlign.center,
           ),
@@ -311,7 +334,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           // Subtitle
           Text(
             '${_officeTypeLabel(_detail!.officeType)} • ${_detail!.constituency}',
-            style: TextStyle(fontSize: 14, color: textColor.withValues(alpha: 0.6)),
+            style: TextStyle(fontSize: 14, color: subtextColor),
             textAlign: TextAlign.center,
           ),
         ],
@@ -323,39 +346,59 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     return PlaceholderAvatar(name: _detail?.name ?? '');
   }
 
-  Widget _buildStats(Color textColor, Color cardColor) {
+  Widget _buildStats(Color textColor, Color subtextColor, Color cardColor, Color borderColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildStatItem(
-            _detail!.assets != null ? _formatCurrency(_detail!.assets!) : 'N/A',
-            LanguageService.tr('total_assets'),
-            textColor,
-          ),
-          Container(width: 1, height: 40, color: textColor.withValues(alpha: 0.1)),
-          _buildStatItem(
-            _ratingStats != null && _ratingStats!.overallStars > 0
-                ? '${_ratingStats!.overallStars.toStringAsFixed(1)}★'
-                : LanguageService.tr('no_ratings_short'),
-            _ratingStats != null && _ratingStats!.totalRatings > 0
-                ? '${LanguageService.tr('rating')} (${_ratingStats!.totalRatings})'
-                : LanguageService.tr('public_rating'),
-            textColor,
-          ),
-          Container(width: 1, height: 40, color: textColor.withValues(alpha: 0.1)),
-          _buildStatItem(
-            _detail!.totalCases.toString(),
-            _detail!.totalCases == 1 ? LanguageService.tr('case_singular') : LanguageService.tr('cases_plural'),
-            textColor,
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+          border: Border.all(color: borderColor.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: widget.isDarkMode
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : const Color(0xFFD4CFC5).withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildStatItem(
+              _detail!.assets != null ? _formatCurrency(_detail!.assets!) : 'N/A',
+              LanguageService.tr('total_assets'),
+              textColor,
+              subtextColor,
+            ),
+            Container(width: 1, height: 40, color: borderColor),
+            _buildStatItem(
+              _ratingStats != null && _ratingStats!.overallStars > 0
+                  ? '${_ratingStats!.overallStars.toStringAsFixed(1)}★'
+                  : LanguageService.tr('no_ratings_short'),
+              _ratingStats != null && _ratingStats!.totalRatings > 0
+                  ? '${LanguageService.tr('rating')} (${_ratingStats!.totalRatings})'
+                  : LanguageService.tr('public_rating'),
+              textColor,
+              subtextColor,
+            ),
+            Container(width: 1, height: 40, color: borderColor),
+            _buildStatItem(
+              _detail!.totalCases.toString(),
+              _detail!.totalCases == 1 ? LanguageService.tr('case_singular') : LanguageService.tr('cases_plural'),
+              textColor,
+              subtextColor,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatItem(String value, String label, Color textColor) {
+  Widget _buildStatItem(String value, String label, Color textColor, Color subtextColor) {
     return Column(
       children: [
         Text(
@@ -369,21 +412,21 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: textColor.withValues(alpha: 0.6)),
+          style: TextStyle(fontSize: 11, color: subtextColor),
         ),
       ],
     );
   }
 
-  Widget _buildBadge(Color textColor) {
+  Widget _buildBadge(Color textColor, Color subtextColor) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: widget.isDarkMode
             ? Colors.white.withValues(alpha: 0.05)
-            : Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+            : ThemeService.pastelPeach,
+        borderRadius: BorderRadius.circular(ThemeService.smallRadius),
       ),
       child: Row(
         children: [
@@ -406,7 +449,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                   '${_detail!.totalCases} ${LanguageService.tr('criminal_cases_record')}',
                   style: TextStyle(
                     fontSize: 13,
-                    color: textColor.withValues(alpha: 0.6),
+                    color: subtextColor,
                   ),
                 ),
               ],
@@ -417,18 +460,20 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     );
   }
 
-  Widget _buildSections(Color textColor, Color cardColor) {
+  Widget _buildSections(Color textColor, Color subtextColor, Color borderColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
+          Divider(color: borderColor),
+          const SizedBox(height: 16),
           Text(
             LanguageService.tr('details'),
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+              fontSize: ThemeService.sectionSize,
+              fontWeight: FontWeight.w700,
               color: textColor,
             ),
           ),
@@ -439,6 +484,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
             LanguageService.tr('current_position'),
             '${LanguageService.translitName(_detail!.officeType.replaceAll('_', ' '))}\n${LanguageService.translitName(_detail!.state)} • ${LanguageService.translitName(_detail!.party)}',
             textColor,
+            subtextColor,
+            ThemeService.pastelLavender,
           ),
           const SizedBox(height: 20),
           // Education
@@ -448,6 +495,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
               LanguageService.tr('education_label'),
               _detail!.education!,
               textColor,
+              subtextColor,
+              ThemeService.pastelBlue,
             ),
           if (_detail!.education != null) const SizedBox(height: 20),
           // Financial
@@ -457,6 +506,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
               LanguageService.tr('financial_details'),
               _buildFinancialText(),
               textColor,
+              subtextColor,
+              ThemeService.pastelGreen,
             ),
           if (_detail!.assets != null || _detail!.liabilities != null)
             const SizedBox(height: 20),
@@ -470,6 +521,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                       ? '\n${LanguageService.tr('spouse_label')}: ${_detail!.spouseProfession!}'
                       : ''),
               textColor,
+              subtextColor,
+              ThemeService.pastelYellow,
             ),
           if (_detail!.selfProfession != null) const SizedBox(height: 20),
           // ITR
@@ -479,11 +532,13 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
               LanguageService.tr('income_tax_returns'),
               _buildITRText(),
               textColor,
+              subtextColor,
+              ThemeService.pastelMint,
             ),
           if (_detail!.selfItr != null || _detail!.spouseItr != null)
             const SizedBox(height: 20),
           // Criminal Cases
-          if (_detail!.totalCases > 0) _buildCriminalCasesSection(textColor),
+          if (_detail!.totalCases > 0) _buildCriminalCasesSection(textColor, subtextColor),
         ],
       ),
     );
@@ -494,6 +549,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     String title,
     String description,
     Color textColor,
+    Color subtextColor,
+    Color pastelBg,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,10 +560,10 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           decoration: BoxDecoration(
             color: widget.isDarkMode
                 ? Colors.white.withValues(alpha: 0.05)
-                : Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+                : pastelBg,
+            borderRadius: BorderRadius.circular(ThemeService.chipRadius),
           ),
-          child: Icon(icon, size: 24, color: textColor.withValues(alpha: 0.7)),
+          child: Icon(icon, size: 24, color: widget.isDarkMode ? textColor.withValues(alpha: 0.7) : ThemeService.lightText.withValues(alpha: 0.7)),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -526,7 +583,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                 description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: textColor.withValues(alpha: 0.7),
+                  color: subtextColor,
                   height: 1.4,
                 ),
               ),
@@ -569,7 +626,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     return parts.join('\n');
   }
 
-  Widget _buildCriminalCasesSection(Color textColor) {
+  Widget _buildCriminalCasesSection(Color textColor, Color subtextColor) {
     final allCases = [...?_detail!.ipcCases, ...?_detail!.bnsCases];
 
     return Column(
@@ -581,8 +638,10 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: widget.isDarkMode
+                    ? Colors.red.withValues(alpha: 0.1)
+                    : ThemeService.pastelPeach,
+                borderRadius: BorderRadius.circular(ThemeService.chipRadius),
               ),
               child: Icon(Icons.gavel, size: 24, color: Colors.red),
             ),
@@ -642,7 +701,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                               caseDetail,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: textColor.withValues(alpha: 0.7),
+                                color: subtextColor,
                                 height: 1.4,
                               ),
                             ),
@@ -664,7 +723,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
     return Formatters.formatCurrency(amount);
   }
 
-  Widget _buildRatingButton(Color textColor, Color cardColor) {
+  Widget _buildRatingButton(Color textColor, Color subtextColor, Color cardColor, Color borderColor) {
     if (_loadingRating) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -672,7 +731,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           height: 60,
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(ThemeService.cardRadius - 8),
           ),
           child: Center(
             child: SizedBox(
@@ -680,7 +739,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: textColor.withValues(alpha: 0.5),
+                color: subtextColor,
               ),
             ),
           ),
@@ -694,16 +753,16 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _showRatingForm,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ThemeService.cardRadius - 8),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: cardColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ThemeService.cardRadius - 8),
               border: Border.all(
                 color: _userRating != null
                     ? Colors.amber.withValues(alpha: 0.5)
-                    : textColor.withValues(alpha: 0.1),
+                    : borderColor,
                 width: 2,
               ),
             ),
@@ -712,8 +771,10 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    color: widget.isDarkMode
+                        ? Colors.amber.withValues(alpha: 0.2)
+                        : ThemeService.pastelYellow,
+                    borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                   ),
                   child: const Icon(Icons.star, color: Colors.amber, size: 24),
                 ),
@@ -750,7 +811,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                               '${_userRating!.overallScore}/100',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: textColor.withValues(alpha: 0.6),
+                                color: subtextColor,
                               ),
                             ),
                           ],
@@ -762,7 +823,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                               : LanguageService.tr('sign_in_to_rate_short'),
                           style: TextStyle(
                             fontSize: 12,
-                            color: textColor.withValues(alpha: 0.6),
+                            color: subtextColor,
                           ),
                         ),
                     ],
@@ -770,7 +831,7 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
                 ),
                 Icon(
                   _userRating != null ? Icons.edit : Icons.arrow_forward_ios,
-                  color: textColor.withValues(alpha: 0.4),
+                  color: subtextColor,
                   size: 20,
                 ),
               ],
@@ -790,8 +851,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           child: Text(
             LanguageService.tr('public_ratings'),
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: ThemeService.sectionSize,
+              fontWeight: FontWeight.w700,
               color: textColor,
             ),
           ),

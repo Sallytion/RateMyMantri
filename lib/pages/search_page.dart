@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -35,11 +35,11 @@ class _SearchPageState extends State<SearchPage> {
   /// Reads the current dark-mode flag from the provider.
   bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
 
-  // â”€â”€â”€ Static in-memory cache (survives widget rebuilds) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Static in-memory cache (survives widget rebuilds) ─────────
   static List<Representative>? _cachedResults;
   static String? _cachedQuery;
 
-  
+
   List<Representative> _searchResults = [];
   bool _isSearching = false;
   Timer? _debounceTimer;
@@ -139,11 +139,11 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
-    final backgroundColor = isDarkMode ? ThemeService.bgAlt : const Color(0xFFFAFAFA);
-    final cardColor = isDarkMode ? ThemeService.bgCard : Colors.white;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF222222);
-    final subtextColor = isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
-    
+    final backgroundColor = isDarkMode ? ThemeService.bgAlt : ThemeService.lightBg;
+    final cardColor = isDarkMode ? ThemeService.bgCard : ThemeService.lightCard;
+    final textColor = isDarkMode ? Colors.white : ThemeService.lightText;
+    final subtextColor = isDarkMode ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Column(
@@ -160,21 +160,21 @@ class _SearchPageState extends State<SearchPage> {
                     LanguageService.tr('search'),
                     style: TextStyle(
                       color: textColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.3,
+                      fontSize: ThemeService.titleSize,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 14),
                   // Search Input
                   Container(
                     decoration: BoxDecoration(
-                      color: isDarkMode ? ThemeService.bgElev : const Color(0xFFF0F0F0),
-                      borderRadius: BorderRadius.circular(16),
+                      color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _searchFocusNode.hasFocus
                             ? ThemeService.accent.withValues(alpha: 0.4)
-                            : Colors.transparent,
+                            : isDarkMode ? Colors.transparent : ThemeService.lightBorder,
                         width: 1.5,
                       ),
                     ),
@@ -274,7 +274,7 @@ class _SearchPageState extends State<SearchPage> {
                               decoration: BoxDecoration(
                                 color: isDarkMode
                                     ? ThemeService.bgElev
-                                    : const Color(0xFFF0F0F0),
+                                    : ThemeService.lightCardAlt,
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -315,19 +315,19 @@ class _SearchPageState extends State<SearchPage> {
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
                               color: cardColor,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(ThemeService.cardRadius),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.06),
+                                  color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
                                   blurRadius: 16,
-                                  offset: const Offset(0, 4),
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(ThemeService.cardRadius),
                                 onTap: () => _selectRepresentative(rep),
                                 onLongPress: () => _prefetchService.prefetch(rep.id.toString()),
                                 child: Padding(
@@ -339,18 +339,18 @@ class _SearchPageState extends State<SearchPage> {
                                         width: 68,
                                         height: 68,
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(ThemeService.cardRadius - 8),
                                           border: Border.all(
                                             color: isDarkMode
                                                 ? ThemeService.bgBorder
-                                                : const Color(0xFFE0E0E0),
+                                                : ThemeService.lightBorder,
                                             width: 2,
                                           ),
                                         ),
                                         child: Hero(
                                           tag: 'rep_avatar_${rep.id}',
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(14),
+                                            borderRadius: BorderRadius.circular(ThemeService.cardRadius - 8),
                                             child: rep.imageUrl != null && rep.imageUrl!.isNotEmpty
                                                 ? CachedNetworkImage(
                                                     imageUrl: rep.imageUrl!,
@@ -360,7 +360,7 @@ class _SearchPageState extends State<SearchPage> {
                                                     placeholder: (context, url) => Shimmer.fromColors(
                                                       baseColor: Colors.grey[300]!,
                                                       highlightColor: Colors.grey[100]!,
-                                                      child: Container(color: Colors.white),
+                                                      child: Container(color: ThemeService.lightCard),
                                                     ),
                                                     errorWidget: (context, url, error) =>
                                                         _buildPlaceholderAvatar(rep, textColor),
@@ -417,7 +417,7 @@ class _SearchPageState extends State<SearchPage> {
                                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                     decoration: BoxDecoration(
                                                       color: const Color(0xFFFFB800).withValues(alpha: 0.15),
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                                                     ),
                                                     child: Row(
                                                       mainAxisSize: MainAxisSize.min,
@@ -455,7 +455,7 @@ class _SearchPageState extends State<SearchPage> {
                                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                     decoration: BoxDecoration(
                                                       color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                                                     ),
                                                     child: Text(
                                                       '₹${_formatCurrency(rep.netWorth!)}',
@@ -483,7 +483,7 @@ class _SearchPageState extends State<SearchPage> {
                                               ThemeService.accent.withValues(alpha: 0.8),
                                             ],
                                           ),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                                         ),
                                         child: Text(
                                           rep.party.length > 8 ? '${rep.party.substring(0, 8)}...' : rep.party,

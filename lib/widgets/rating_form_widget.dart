@@ -147,7 +147,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
           question,
           style: TextStyle(
             fontSize: 14,
-            color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+            color: widget.isDarkMode ? Colors.white : ThemeService.lightText,
             height: 1.4,
           ),
         ),
@@ -163,7 +163,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                 child: Icon(
                   starValue <= currentStars ? Icons.star : Icons.star_border,
                   color: starValue <= currentStars ? Colors.amber : Colors.grey,
-                  size: 36,
+                  size: 38,
                 ),
               ),
             );
@@ -179,7 +179,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
               fontSize: 12,
               color: widget.isDarkMode
                   ? Colors.white60
-                  : const Color(0xFF888888),
+                  : ThemeService.lightSubtext,
             ),
           ),
         ),
@@ -191,8 +191,8 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? ThemeService.bgMain : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        color: widget.isDarkMode ? ThemeService.bgMain : ThemeService.lightCard,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(ThemeService.cardRadius)),
       ),
       child: SafeArea(
         child: Padding(
@@ -215,11 +215,11 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                               ? LanguageService.tr('edit_rating')
                               : LanguageService.tr('rate_representative'),
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                            fontSize: ThemeService.sectionSize,
+                            fontWeight: FontWeight.w700,
                             color: widget.isDarkMode
                                 ? Colors.white
-                                : const Color(0xFF222222),
+                                : ThemeService.lightText,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -229,7 +229,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                             fontSize: 14,
                             color: widget.isDarkMode
                                 ? Colors.white70
-                                : const Color(0xFF555555),
+                                : ThemeService.lightSubtext,
                           ),
                         ),
                       ],
@@ -241,7 +241,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                       Icons.close,
                       color: widget.isDarkMode
                           ? Colors.white
-                          : const Color(0xFF222222),
+                          : ThemeService.lightText,
                     ),
                   ),
                 ],
@@ -259,7 +259,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
               const SizedBox(height: 24),
               Divider(
-                color: widget.isDarkMode ? Colors.white24 : Colors.black12,
+                color: widget.isDarkMode ? Colors.white24 : ThemeService.lightBorder,
               ),
               const SizedBox(height: 24),
 
@@ -273,7 +273,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
               const SizedBox(height: 24),
               Divider(
-                color: widget.isDarkMode ? Colors.white24 : Colors.black12,
+                color: widget.isDarkMode ? Colors.white24 : ThemeService.lightBorder,
               ),
               const SizedBox(height: 24),
 
@@ -287,7 +287,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
               const SizedBox(height: 24),
               Divider(
-                color: widget.isDarkMode ? Colors.white24 : Colors.black12,
+                color: widget.isDarkMode ? Colors.white24 : ThemeService.lightBorder,
               ),
               const SizedBox(height: 24),
 
@@ -299,7 +299,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                   fontWeight: FontWeight.w600,
                   color: widget.isDarkMode
                       ? Colors.white
-                      : const Color(0xFF222222),
+                      : ThemeService.lightText,
                 ),
               ),
               const SizedBox(height: 8),
@@ -310,21 +310,21 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                 style: TextStyle(
                   color: widget.isDarkMode
                       ? Colors.white
-                      : const Color(0xFF222222),
+                      : ThemeService.lightText,
                 ),
                 decoration: InputDecoration(
                   hintText: LanguageService.tr('review_hint'),
                   hintStyle: TextStyle(
                     color: widget.isDarkMode
                         ? Colors.white38
-                        : const Color(0xFFBBBBBB),
+                        : ThemeService.lightSubtext,
                   ),
                   filled: true,
                   fillColor: widget.isDarkMode
                       ? ThemeService.bgElev
-                      : const Color(0xFFF5F5F5),
+                      : ThemeService.lightCardAlt,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                     borderSide: BorderSide.none,
                   ),
                   contentPadding: const EdgeInsets.all(16),
@@ -340,8 +340,8 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                   decoration: BoxDecoration(
                     color: widget.isDarkMode
                         ? ThemeService.bgElev
-                        : const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(12),
+                        : ThemeService.lightCardAlt,
+                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                   ),
                   child: Row(
                     children: [
@@ -349,7 +349,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                         Icons.privacy_tip_outlined,
                         color: widget.isDarkMode
                             ? Colors.white70
-                            : const Color(0xFF555555),
+                            : ThemeService.lightSubtext,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -363,7 +363,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                                 fontWeight: FontWeight.w600,
                                 color: widget.isDarkMode
                                     ? Colors.white
-                                    : const Color(0xFF222222),
+                                    : ThemeService.lightText,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -373,7 +373,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                                 fontSize: 12,
                                 color: widget.isDarkMode
                                     ? Colors.white60
-                                    : const Color(0xFF888888),
+                                    : ThemeService.lightSubtext,
                               ),
                             ),
                           ],
@@ -397,7 +397,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                     border: Border.all(
                       color: Colors.orange.withValues(alpha: 0.3),
                       width: 1,
@@ -414,7 +414,7 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                             fontSize: 12,
                             color: widget.isDarkMode
                                 ? Colors.white70
-                                : const Color(0xFF555555),
+                                : ThemeService.lightSubtext,
                           ),
                         ),
                       ),
@@ -433,12 +433,12 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: widget.isDarkMode
                         ? Colors.white
-                        : const Color(0xFF222222),
+                        : ThemeService.lightText,
                     foregroundColor: widget.isDarkMode
-                        ? const Color(0xFF222222)
+                        ? ThemeService.lightText
                         : Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                     ),
                     disabledBackgroundColor: Colors.grey,
                   ),

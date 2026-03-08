@@ -1,4 +1,4 @@
-﻿import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
@@ -48,15 +48,15 @@ class _ProfilePageState extends State<ProfilePage> {
   bool get isDarkMode => context.read<ThemeProvider>().isDarkMode;
 
   Color get _backgroundColor =>
-      isDarkMode ? ThemeService.bgMain : Colors.white;
+      isDarkMode ? ThemeService.bgMain : ThemeService.lightBg;
   Color get _primaryText =>
-      isDarkMode ? const Color(0xFFFFFFFF) : const Color(0xFF222222);
+      isDarkMode ? const Color(0xFFFFFFFF) : ThemeService.lightText;
   Color get _secondaryText =>
-      isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF717171);
+      isDarkMode ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext;
   Color get _cardBackground =>
-      isDarkMode ? ThemeService.bgElev : const Color(0xFFF7F7F7);
+      isDarkMode ? ThemeService.bgElev : ThemeService.lightCard;
   Color get _dividerColor =>
-      isDarkMode ? ThemeService.bgElev : const Color(0xFFEEEEEE);
+      isDarkMode ? ThemeService.bgElev : ThemeService.lightBorder;
 
   @override
   void initState() {
@@ -157,8 +157,8 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _cardBackground,
-            borderRadius: BorderRadius.circular(24),
+            color: isDarkMode ? _cardBackground : ThemeService.lightCard,
+            borderRadius: BorderRadius.circular(ThemeService.cardRadius),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),
@@ -246,9 +246,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: isDarkMode
                           ? ThemeService.bgElev
-                          : const Color(0xFFF0F0F0),
+                          : ThemeService.lightCardAlt,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                       ),
                     ),
                     child: Text(
@@ -286,17 +286,35 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   LanguageService.tr('profile'),
                   style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: isDarkMode ? Colors.white : const Color(0xFF222222),
-                    letterSpacing: -0.3,
+                    fontSize: ThemeService.titleSize,
+                    fontWeight: FontWeight.w800,
+                    color: isDarkMode ? Colors.white : ThemeService.lightText,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ),
               // Header - Identity & Tenure
               Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Center(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24.0),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                    border: isDarkMode
+                        ? null
+                        : Border.all(color: ThemeService.lightBorder, width: 1),
+                    boxShadow: isDarkMode
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                  ),
                   child: Column(
                     children: [
                     Stack(
@@ -304,8 +322,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         Container(
                           width: 100,
                           height: 100,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? ThemeService.accent.withValues(alpha: 0.5)
+                                  : ThemeService.lightBorder,
+                              width: 3,
+                            ),
                           ),
                           child: ClipOval(
                             child: widget.photoUrl != null
@@ -371,7 +395,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         color: widget.isVerified
                             ? Colors.green.withValues(alpha: 0.1)
                             : Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                         border: Border.all(
                           color: widget.isVerified
                               ? Colors.green
@@ -411,112 +435,209 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
 
-              Divider(height: 1, thickness: 1, color: _dividerColor),
+              const SizedBox(height: 16),
 
               // My Contributions
               Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 20.0, 16.0, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      LanguageService.tr('my_activity'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildListItem(
-                      icon: Icons.star,
-                      iconColor: const Color(0xFFFFC107),
-                      title: LanguageService.tr('my_ratings_reviews'),
-                      subtitle: LanguageService.tr('ratings_count'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RatePage(
-                              isVerified: widget.isVerified,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                    border: isDarkMode
+                        ? null
+                        : Border.all(color: ThemeService.lightBorder, width: 1),
+                    boxShadow: isDarkMode
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
+                          ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
+                        child: Text(
+                          LanguageService.tr('my_activity'),
+                          style: TextStyle(
+                            fontSize: ThemeService.sectionSize,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryText,
                           ),
-                        );
-                      },
-                      showArrow: true,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              Divider(height: 1, thickness: 8, color: _cardBackground),
-              const SizedBox(height: 24),
-
-              // Political Context
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      LanguageService.tr('my_location'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryText,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildListItem(
-                      icon: Icons.location_on,
-                      iconColor: ThemeService.accent,
-                      title: LanguageService.tr('constituency_label'),
-                      subtitle: _isLoadingConstituency
-                          ? LanguageService.tr('loading')
-                          : _currentConstituency?.name ?? LanguageService.tr('not_set'),
-                      onTap: _navigateToConstituencySearch,
-                      showArrow: true,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              Divider(height: 1, thickness: 8, color: _cardBackground),
-              const SizedBox(height: 24),
-
-              // General Settings
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      LanguageService.tr('settings_support'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Add Verify Account option for unverified users
-                    if (!widget.isVerified) ...[
+                      const SizedBox(height: 8),
                       _buildListItem(
-                        icon: Icons.verified_user,
-                        iconColor: Colors.green,
-                        title: LanguageService.tr('verify_account'),
-                        subtitle: LanguageService.tr('verify_subtitle'),
+                        icon: Icons.star,
+                        iconColor: const Color(0xFFFFC107),
+                        title: LanguageService.tr('my_ratings_reviews'),
+                        subtitle: LanguageService.tr('ratings_count'),
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => AadharVerificationPage(
-                                userEmail: widget.userEmail ?? '',
-                                userName: widget.userName,
-                                userId: widget.userId ?? '',
-                                photoUrl: widget.photoUrl,
+                              builder: (context) => RatePage(
+                                isVerified: widget.isVerified,
+                              ),
+                            ),
+                          );
+                        },
+                        showArrow: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Political Context
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                    border: isDarkMode
+                        ? null
+                        : Border.all(color: ThemeService.lightBorder, width: 1),
+                    boxShadow: isDarkMode
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
+                        child: Text(
+                          LanguageService.tr('my_location'),
+                          style: TextStyle(
+                            fontSize: ThemeService.sectionSize,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildConstituencyItem(
+                        icon: Icons.location_on,
+                        iconColor: ThemeService.accent,
+                        title: LanguageService.tr('constituency_label'),
+                        subtitle: _isLoadingConstituency
+                            ? LanguageService.tr('loading')
+                            : _currentConstituency?.name ?? LanguageService.tr('not_set'),
+                        onTap: _navigateToConstituencySearch,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // General Settings
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                    border: isDarkMode
+                        ? null
+                        : Border.all(color: ThemeService.lightBorder, width: 1),
+                    boxShadow: isDarkMode
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
+                        child: Text(
+                          LanguageService.tr('settings_support'),
+                          style: TextStyle(
+                            fontSize: ThemeService.sectionSize,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Add Verify Account option for unverified users
+                      if (!widget.isVerified) ...[
+                        _buildListItem(
+                          icon: Icons.verified_user,
+                          iconColor: Colors.green,
+                          title: LanguageService.tr('verify_account'),
+                          subtitle: LanguageService.tr('verify_subtitle'),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AadharVerificationPage(
+                                  userEmail: widget.userEmail ?? '',
+                                  userName: widget.userName,
+                                  userId: widget.userId ?? '',
+                                  photoUrl: widget.photoUrl,
+                                ),
+                              ),
+                            );
+                          },
+                          showArrow: true,
+                        ),
+                        Divider(height: 1, indent: 56, color: _dividerColor),
+                      ],
+                      _buildListItem(
+                        icon: Icons.palette_outlined,
+                        iconColor: ThemeService.accentColors[context.read<ThemeProvider>().accentColorIndex],
+                        title: LanguageService.tr('customization'),
+                        subtitle: LanguageService.tr('theme_accent_dark'),
+                        onTap: _showCustomizationSheet,
+                        showArrow: true,
+                      ),
+                      Divider(height: 1, indent: 56, color: _dividerColor),
+                      _buildListItem(
+                        icon: Icons.language,
+                        iconColor: const Color(0xFF9C27B0),
+                        title: LanguageService.tr('language'),
+                        subtitle: LanguageService.currentLanguageName,
+                        onTap: _showLanguageSheet,
+                        showArrow: true,
+                      ),
+                      Divider(height: 1, indent: 56, color: _dividerColor),
+                      _buildListItem(
+                        icon: Icons.bookmark_outline,
+                        iconColor: const Color(0xFF00BCD4),
+                        title: LanguageService.tr('saved_articles'),
+                        subtitle: LanguageService.tr('view_bookmarks'),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SavedArticlesPage(
+                                isDarkMode: isDarkMode,
                               ),
                             ),
                           );
@@ -524,168 +645,73 @@ class _ProfilePageState extends State<ProfilePage> {
                         showArrow: true,
                       ),
                       Divider(height: 1, indent: 56, color: _dividerColor),
-                    ],
-                    _buildListItem(
-                      icon: Icons.palette_outlined,
-                      iconColor: ThemeService.accentColors[context.read<ThemeProvider>().accentColorIndex],
-                      title: LanguageService.tr('customization'),
-                      subtitle: LanguageService.tr('theme_accent_dark'),
-                      onTap: _showCustomizationSheet,
-                      showArrow: true,
-                    ),
-                    Divider(height: 1, indent: 56, color: _dividerColor),
-                    _buildListItem(
-                      icon: Icons.language,
-                      iconColor: const Color(0xFF9C27B0),
-                      title: LanguageService.tr('language'),
-                      subtitle: LanguageService.currentLanguageName,
-                      onTap: _showLanguageSheet,
-                      showArrow: true,
-                    ),
-                    Divider(height: 1, indent: 56, color: _dividerColor),
-                    _buildListItem(
-                      icon: Icons.bookmark_outline,
-                      iconColor: const Color(0xFF00BCD4),
-                      title: LanguageService.tr('saved_articles'),
-                      subtitle: LanguageService.tr('view_bookmarks'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SavedArticlesPage(
-                              isDarkMode: isDarkMode,
-                            ),
-                          ),
-                        );
-                      },
-                      showArrow: true,
-                    ),
-                    Divider(height: 1, indent: 56, color: _dividerColor),
-                    _buildListItem(
-                      icon: Icons.support_agent,
-                      iconColor: const Color(0xFF4CAF50),
-                      title: LanguageService.tr('support'),
-                      subtitle: LanguageService.tr('contact_dev'),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          barrierColor: Colors.black.withValues(alpha: 0.6),
-                          builder: (context) => Dialog(
-                            backgroundColor: Colors.transparent,
-                            elevation: 0,
-                            child: Container(
-                              constraints: const BoxConstraints(maxWidth: 400),
-                              decoration: BoxDecoration(
-                                color: _cardBackground,
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 32,
-                                    offset: const Offset(0, 16),
-                                  ),
-                                ],
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(28),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Header with Icon
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          child: const Icon(
-                                            Icons.support_agent_rounded,
-                                            color: Color(0xFF4CAF50),
-                                            size: 28,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                LanguageService.tr('contact_support'),
-                                                style: TextStyle(
-                                                  color: _primaryText,
-                                                  fontSize: 22,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: -0.5,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                LanguageService.tr('we_help'),
-                                                style: TextStyle(
-                                                  color: _secondaryText,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                      _buildListItem(
+                        icon: Icons.support_agent,
+                        iconColor: const Color(0xFF4CAF50),
+                        title: LanguageService.tr('support'),
+                        subtitle: LanguageService.tr('contact_dev'),
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            barrierColor: Colors.black.withValues(alpha: 0.6),
+                            builder: (context) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              elevation: 0,
+                              child: Container(
+                                constraints: const BoxConstraints(maxWidth: 400),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode ? _cardBackground : ThemeService.lightCard,
+                                  borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 32,
+                                      offset: const Offset(0, 16),
                                     ),
-                                    const SizedBox(height: 24),
-                                    // Email Container
-                                    Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: isDarkMode
-                                            ? ThemeService.bgElev
-                                            : const Color(0xFFF0F0F0),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: isDarkMode
-                                              ? ThemeService.bgBorder
-                                              : const Color(0xFFE0E0E0),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(28),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Header with Icon
+                                      Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.all(8),
+                                            padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
                                               color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius: BorderRadius.circular(16),
                                             ),
                                             child: const Icon(
-                                              Icons.email_rounded,
+                                              Icons.support_agent_rounded,
                                               color: Color(0xFF4CAF50),
-                                              size: 20,
+                                              size: 28,
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          const SizedBox(width: 16),
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  LanguageService.tr('email_us_at'),
+                                                  LanguageService.tr('contact_support'),
                                                   style: TextStyle(
-                                                    color: _secondaryText,
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    letterSpacing: 0.5,
+                                                    color: _primaryText,
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: -0.5,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
-                                                  'sallytionmakes@gmail.com',
+                                                  LanguageService.tr('we_help'),
                                                   style: TextStyle(
-                                                    color: _primaryText,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
+                                                    color: _secondaryText,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                               ],
@@ -693,128 +719,187 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    // Action Buttons
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: TextButton(
-                                            onPressed: () => Navigator.pop(context),
-                                            style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(vertical: 14),
-                                              backgroundColor: isDarkMode
-                                                  ? ThemeService.bgElev
-                                                  : const Color(0xFFF0F0F0),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              LanguageService.tr('close'),
-                                              style: TextStyle(
-                                                color: _secondaryText,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
+                                      const SizedBox(height: 24),
+                                      // Email Container
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: isDarkMode
+                                              ? ThemeService.bgElev
+                                              : ThemeService.lightCardAlt,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: isDarkMode
+                                                ? ThemeService.bgBorder
+                                                : ThemeService.lightBorder,
+                                            width: 1,
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: () async {
-                                              final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                              final isDark = isDarkMode;
-                                              Navigator.pop(context);
-                                              final Uri emailUri = Uri(
-                                                scheme: 'mailto',
-                                                path: 'sallytionmakes@gmail.com',
-                                                query: 'subject=Rate My Mantri - Support Request',
-                                              );
-                                              
-                                              try {
-                                                await launchUrl(
-                                                  emailUri,
-                                                  mode: LaunchMode.externalApplication,
-                                                );
-                                              } catch (e) {
-                                                if (mounted) {
-                                                  scaffoldMessenger.showSnackBar(
-                                                    SnackBar(
-                                                      content: Text('${LanguageService.tr('please_email_at')}: sallytionmakes@gmail.com'),
-                                                      backgroundColor: isDark
-                                                          ? ThemeService.bgElev
-                                                          : const Color(0xFF323232),
-                                                      duration: const Duration(seconds: 4),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(ThemeService.chipRadius),
+                                              ),
+                                              child: const Icon(
+                                                Icons.email_rounded,
+                                                color: Color(0xFF4CAF50),
+                                                size: 20,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    LanguageService.tr('email_us_at'),
+                                                    style: TextStyle(
+                                                      color: _secondaryText,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      letterSpacing: 0.5,
                                                     ),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(vertical: 14),
-                                              backgroundColor: const Color(0xFF4CAF50),
-                                              foregroundColor: Colors.white,
-                                              elevation: 0,
-                                              shadowColor: Colors.transparent,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    'sallytionmakes@gmail.com',
+                                                    style: TextStyle(
+                                                      color: _primaryText,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            child: Text(
-                                              LanguageService.tr('send_email'),
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: 0.3,
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      // Action Buttons
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                backgroundColor: isDarkMode
+                                                    ? ThemeService.bgElev
+                                                    : ThemeService.lightCardAlt,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                LanguageService.tr('close'),
+                                                style: TextStyle(
+                                                  color: _secondaryText,
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () async {
+                                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                                final isDark = isDarkMode;
+                                                Navigator.pop(context);
+                                                final Uri emailUri = Uri(
+                                                  scheme: 'mailto',
+                                                  path: 'sallytionmakes@gmail.com',
+                                                  query: 'subject=Rate My Mantri - Support Request',
+                                                );
+
+                                                try {
+                                                  await launchUrl(
+                                                    emailUri,
+                                                    mode: LaunchMode.externalApplication,
+                                                  );
+                                                } catch (e) {
+                                                  if (mounted) {
+                                                    scaffoldMessenger.showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('${LanguageService.tr('please_email_at')}: sallytionmakes@gmail.com'),
+                                                        backgroundColor: isDark
+                                                            ? ThemeService.bgElev
+                                                            : const Color(0xFF323232),
+                                                        duration: const Duration(seconds: 4),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                backgroundColor: const Color(0xFF4CAF50),
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                shadowColor: Colors.transparent,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                LanguageService.tr('send_email'),
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                      showArrow: true,
-                    ),
-                    Divider(height: 1, indent: 56, color: _dividerColor),
-                    _buildListItem(
-                      icon: Icons.privacy_tip_outlined,
-                      iconColor: const Color(0xFF795548),
-                      title: LanguageService.tr('legal_privacy'),
-                      subtitle: LanguageService.tr('terms_data'),
-                      onTap: () async {
-                        final uri = Uri.parse('${ApiConfig.baseUrl}/privacypolicy');
-                        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(LanguageService.tr('could_not_open_privacy'))),
-                            );
+                          );
+                        },
+                        showArrow: true,
+                      ),
+                      Divider(height: 1, indent: 56, color: _dividerColor),
+                      _buildListItem(
+                        icon: Icons.privacy_tip_outlined,
+                        iconColor: const Color(0xFF795548),
+                        title: LanguageService.tr('legal_privacy'),
+                        subtitle: LanguageService.tr('terms_data'),
+                        onTap: () async {
+                          final uri = Uri.parse('${ApiConfig.baseUrl}/privacypolicy');
+                          if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(LanguageService.tr('could_not_open_privacy'))),
+                              );
+                            }
                           }
-                        }
-                      },
-                      showArrow: true,
-                    ),
-                    Divider(height: 1, indent: 56, color: _dividerColor),
-                    _buildListItem(
-                      icon: Icons.info_outline,
-                      iconColor: const Color(0xFF607D8B),
-                      title: LanguageService.tr('about_app_disclaimer'),
-                      subtitle: LanguageService.tr('data_sources_and_disclaimer'),
-                      onTap: () => _showDisclaimerDialog(context),
-                      showArrow: true,
-                    ),
-                  ],
+                        },
+                        showArrow: true,
+                      ),
+                      Divider(height: 1, indent: 56, color: _dividerColor),
+                      _buildListItem(
+                        icon: Icons.info_outline,
+                        iconColor: const Color(0xFF607D8B),
+                        title: LanguageService.tr('about_app_disclaimer'),
+                        subtitle: LanguageService.tr('data_sources_and_disclaimer'),
+                        onTap: () => _showDisclaimerDialog(context),
+                        showArrow: true,
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               // Logout Button
               Padding(
@@ -835,8 +920,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: Container(
                             constraints: const BoxConstraints(maxWidth: 400),
                             decoration: BoxDecoration(
-                              color: _cardBackground,
-                              borderRadius: BorderRadius.circular(24),
+                              color: isDarkMode ? _cardBackground : ThemeService.lightCard,
+                              borderRadius: BorderRadius.circular(ThemeService.cardRadius),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.3),
@@ -914,9 +999,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                             padding: const EdgeInsets.symmetric(vertical: 14),
                                             backgroundColor: isDarkMode
                                                 ? ThemeService.bgElev
-                                                : const Color(0xFFF0F0F0),
+                                                : ThemeService.lightCardAlt,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                                             ),
                                           ),
                                           child: Text(
@@ -940,7 +1025,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             elevation: 0,
                                             shadowColor: Colors.transparent,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                                             ),
                                           ),
                                           child: Text(
@@ -1010,9 +1095,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFD32F2F),
-                      side: const BorderSide(color: Color(0xFFD32F2F)),
+                      backgroundColor: const Color(0xFFD32F2F).withValues(alpha: 0.06),
+                      side: BorderSide(
+                        color: const Color(0xFFD32F2F).withValues(alpha: 0.3),
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                       ),
                     ),
                     child: Text(
@@ -1029,6 +1117,63 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 32),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Constituency item with pastelGreen tinted background.
+  Widget _buildConstituencyItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+        decoration: BoxDecoration(
+          color: isDarkMode
+              ? ThemeService.bgElev.withValues(alpha: 0.5)
+              : ThemeService.pastelGreen.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: _secondaryText),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: _secondaryText),
+          ],
         ),
       ),
     );
@@ -1053,7 +1198,7 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: iconColor, size: 24),
             ),
@@ -1088,7 +1233,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
-// â”€â”€â”€ Customization Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Customization Bottom Sheet ---
 
 class _CustomizationSheet extends StatefulWidget {
   final bool isDarkMode;
@@ -1128,7 +1273,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.isDarkMode ? ThemeService.bgCard : Colors.white;
+    final bgColor = widget.isDarkMode ? ThemeService.bgCard : ThemeService.lightCard;
     final textColor = widget.primaryText;
     final subtextColor = widget.secondaryText;
     final accent = ThemeService.accentColors[_selectedColor];
@@ -1136,7 +1281,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(ThemeService.cardRadius)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       child: Column(
@@ -1158,7 +1303,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
           Text(
             LanguageService.tr('customization'),
             style: TextStyle(
-              fontSize: 20,
+              fontSize: ThemeService.sectionSize,
               fontWeight: FontWeight.w600,
               color: textColor,
               letterSpacing: -0.3,
@@ -1166,7 +1311,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
           ),
           const SizedBox(height: 24),
 
-          // â”€â”€ Accent Color â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // -- Accent Color --
           Text(
             LanguageService.tr('accent_color'),
             style: TextStyle(
@@ -1177,52 +1322,64 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: List.generate(ThemeService.accentColors.length, (i) {
-              final color = ThemeService.accentColors[i];
-              final isSelected = i == _selectedColor;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedColor = i);
-                    widget.onAccentColorChanged(i);
-                  },
-                  child: Column(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: textColor, width: 2.5)
-                              : Border.all(color: Colors.transparent, width: 2.5),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            decoration: BoxDecoration(
+              color: widget.isDarkMode
+                  ? ThemeService.bgElev
+                  : ThemeService.lightCardAlt,
+              borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+              border: widget.isDarkMode
+                  ? null
+                  : Border.all(color: ThemeService.lightBorder, width: 1),
+            ),
+            child: Row(
+              children: List.generate(ThemeService.accentColors.length, (i) {
+                final color = ThemeService.accentColors[i];
+                final isSelected = i == _selectedColor;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedColor = i);
+                      widget.onAccentColorChanged(i);
+                    },
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: textColor, width: 2.5)
+                                : Border.all(color: Colors.transparent, width: 2.5),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check, color: Colors.white, size: 18)
+                              : null,
                         ),
-                        child: isSelected
-                            ? const Icon(Icons.check, color: Colors.white, size: 18)
-                            : null,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        ThemeService.accentColorNames[i],
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          color: isSelected ? textColor : subtextColor,
+                        const SizedBox(height: 6),
+                        Text(
+                          ThemeService.accentColorNames[i],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            color: isSelected ? textColor : subtextColor,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
 
           const SizedBox(height: 28),
 
-          // â”€â”€ Dark Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // -- Dark Mode --
           Text(
             LanguageService.tr('appearance'),
             style: TextStyle(
@@ -1290,8 +1447,23 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
         widget.onDarkModeOptionChanged(option);
       },
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accent.withValues(alpha: 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+          border: isSelected
+              ? Border.all(color: accent.withValues(alpha: 0.3), width: 1)
+              : Border.all(
+                  color: widget.isDarkMode
+                      ? Colors.transparent
+                      : ThemeService.lightBorder.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+        ),
         child: Row(
           children: [
             Icon(icon, size: 20, color: isSelected ? accent : subtextColor),
@@ -1336,4 +1508,3 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
     );
   }
 }
-

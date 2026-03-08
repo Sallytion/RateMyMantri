@@ -34,14 +34,19 @@ class ArticleViewerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = isDarkMode ? ThemeService.bgAlt : ThemeService.lightBg;
+    final textColor = isDarkMode ? Colors.white : ThemeService.lightText;
+    final subtextColor = isDarkMode ? Colors.grey[400]! : ThemeService.lightSubtext;
+    final borderColor = isDarkMode ? Colors.grey[800]! : ThemeService.lightBorder;
+
     return Scaffold(
-      backgroundColor: isDarkMode ? ThemeService.bgAlt : Colors.white,
+      backgroundColor: bgColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: isDarkMode ? ThemeService.bgCard : Colors.white,
+            backgroundColor: isDarkMode ? ThemeService.bgCard : ThemeService.lightBg,
             elevation: 0,
             scrolledUnderElevation: 0,
             leading: IconButton(
@@ -124,10 +129,11 @@ class ArticleViewerPage extends StatelessWidget {
                   Text(
                     LanguageService.translitName(title),
                     style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
                       height: 1.3,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -136,7 +142,7 @@ class ArticleViewerPage extends StatelessWidget {
                       Icon(
                         Icons.source,
                         size: 16,
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                        color: subtextColor,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -144,7 +150,7 @@ class ArticleViewerPage extends StatelessWidget {
                           LanguageService.translitName(source),
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                            color: subtextColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -157,45 +163,43 @@ class ArticleViewerPage extends StatelessWidget {
                       Icon(
                         Icons.access_time,
                         size: 16,
-                        color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                        color: subtextColor,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         pubDate,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                          color: subtextColor,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Divider(
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                  ),
+                  Divider(color: borderColor),
                   const SizedBox(height: 24),
                   if (articleText != null && articleText!.isNotEmpty)
                     Text(
                       LanguageService.translitName(articleText!),
                       style: TextStyle(
                         fontSize: 16,
-                        height: 1.7,
-                        color: isDarkMode ? Colors.grey[200] : Colors.black87,
+                        height: 1.8,
+                        color: isDarkMode ? Colors.grey[200] : ThemeService.lightText,
                       ),
                     )
                   else
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDarkMode ? ThemeService.bgCard : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
+                        color: isDarkMode ? ThemeService.bgCard : ThemeService.lightCardAlt,
+                        borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                       ),
                       child: Column(
                         children: [
                           Icon(
                             Icons.article_outlined,
                             size: 48,
-                            color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+                            color: subtextColor,
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -203,7 +207,7 @@ class ArticleViewerPage extends StatelessWidget {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 15,
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              color: subtextColor,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -212,23 +216,24 @@ class ArticleViewerPage extends StatelessWidget {
                             icon: const Icon(Icons.open_in_browser),
                             label: Text(LanguageService.tr('read_original')),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                              foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                              backgroundColor: ThemeService.accent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   const SizedBox(height: 32),
-                  Divider(
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                  ),
+                  Divider(color: borderColor),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? ThemeService.bgCard : Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
+                      color: isDarkMode ? ThemeService.bgCard : ThemeService.lightCardAlt,
+                      borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +243,7 @@ class ArticleViewerPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black,
+                            color: textColor,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -246,7 +251,7 @@ class ArticleViewerPage extends StatelessWidget {
                           '${LanguageService.tr('source_label')}: ${LanguageService.translitName(source)}',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                            color: subtextColor,
                           ),
                         ),
                         const SizedBox(height: 8),

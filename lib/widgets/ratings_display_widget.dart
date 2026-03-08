@@ -102,7 +102,10 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
     }
 
     return Card(
-      color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
+      color: widget.isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+      ),
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -121,7 +124,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontSize: 14,
                           color: widget.isDarkMode
                               ? Colors.white70
-                              : const Color(0xFF555555),
+                              : ThemeService.lightSubtext,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -134,7 +137,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontWeight: FontWeight.bold,
                           color: widget.isDarkMode
                               ? Colors.white
-                              : const Color(0xFF222222),
+                              : ThemeService.lightText,
                         ),
                       ),
                     ],
@@ -145,8 +148,8 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                   decoration: BoxDecoration(
                     color: widget.isDarkMode
                         ? ThemeService.bgMain
-                        : const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(12),
+                        : ThemeService.lightCardAlt,
+                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                   ),
                   child: Column(
                     children: [
@@ -157,7 +160,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontWeight: FontWeight.bold,
                           color: widget.isDarkMode
                               ? Colors.white
-                              : const Color(0xFF222222),
+                              : ThemeService.lightText,
                         ),
                       ),
                       Text(
@@ -166,7 +169,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontSize: 12,
                           color: widget.isDarkMode
                               ? Colors.white70
-                              : const Color(0xFF555555),
+                              : ThemeService.lightSubtext,
                         ),
                       ),
                     ],
@@ -176,7 +179,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
             ),
 
             const SizedBox(height: 20),
-            Divider(color: widget.isDarkMode ? Colors.white24 : Colors.black12),
+            Divider(color: widget.isDarkMode ? Colors.white24 : ThemeService.lightBorder),
             const SizedBox(height: 16),
 
             // Detailed Breakdown
@@ -242,7 +245,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+            color: widget.isDarkMode ? Colors.white : ThemeService.lightText,
           ),
         ),
         const SizedBox(height: 4),
@@ -250,7 +253,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: widget.isDarkMode ? Colors.white60 : const Color(0xFF888888),
+            color: widget.isDarkMode ? Colors.white60 : ThemeService.lightSubtext,
           ),
         ),
       ],
@@ -259,7 +262,10 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
 
   Widget _buildRatingCard(Rating rating) {
     return Card(
-      color: widget.isDarkMode ? ThemeService.bgElev : Colors.white,
+      color: widget.isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ThemeService.cardRadius - 4),
+      ),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -284,7 +290,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                       rating.isAnonymous ? Icons.person_outline : Icons.person,
                       color: widget.isDarkMode
                           ? Colors.white70
-                          : const Color(0xFF555555),
+                          : ThemeService.lightSubtext,
                       size: 20,
                     ),
                   ),
@@ -302,7 +308,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontWeight: FontWeight.w600,
                           color: widget.isDarkMode
                               ? Colors.white
-                              : const Color(0xFF222222),
+                              : ThemeService.lightText,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -317,7 +323,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                               color: rating.isVerified
                                   ? Colors.green.withValues(alpha: 0.2)
                                   : Colors.grey.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -338,7 +344,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                                     fontSize: 10,
                                     color: widget.isDarkMode
                                         ? Colors.white70
-                                        : const Color(0xFF555555),
+                                        : ThemeService.lightSubtext,
                                   ),
                                 ),
                               ],
@@ -351,7 +357,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                               fontSize: 11,
                               color: widget.isDarkMode
                                   ? Colors.white60
-                                  : const Color(0xFF888888),
+                                  : ThemeService.lightSubtext,
                             ),
                           ),
                         ],
@@ -370,7 +376,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                         fontSize: 11,
                         color: widget.isDarkMode
                             ? Colors.white70
-                            : const Color(0xFF555555),
+                            : ThemeService.lightSubtext,
                       ),
                     ),
                   ],
@@ -393,7 +399,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontSize: 10,
                           color: widget.isDarkMode
                               ? Colors.white60
-                              : const Color(0xFF888888),
+                              : ThemeService.lightSubtext,
                         ),
                       ),
                       _buildStarRating(rating.question1Stars, size: 14),
@@ -410,7 +416,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontSize: 10,
                           color: widget.isDarkMode
                               ? Colors.white60
-                              : const Color(0xFF888888),
+                              : ThemeService.lightSubtext,
                         ),
                       ),
                       _buildStarRating(rating.question2Stars, size: 14),
@@ -427,7 +433,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                           fontSize: 10,
                           color: widget.isDarkMode
                               ? Colors.white60
-                              : const Color(0xFF888888),
+                              : ThemeService.lightSubtext,
                         ),
                       ),
                       _buildStarRating(rating.question3Stars, size: 14),
@@ -445,8 +451,8 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                 decoration: BoxDecoration(
                   color: widget.isDarkMode
                       ? ThemeService.bgMain
-                      : const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(8),
+                      : ThemeService.lightCardAlt,
+                  borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                 ),
                 child: Text(
                   LanguageService.translitName(rating.reviewText!),
@@ -454,7 +460,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                     fontSize: 13,
                     color: widget.isDarkMode
                         ? Colors.white70
-                        : const Color(0xFF555555),
+                        : ThemeService.lightSubtext,
                   ),
                 ),
               ),
@@ -474,7 +480,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
     if (_isLoading) {
       return Center(
         child: CircularProgressIndicator(
-          color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+          color: widget.isDarkMode ? Colors.white : ThemeService.lightText,
         ),
       );
     }
@@ -491,7 +497,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                 size: 48,
                 color: widget.isDarkMode
                     ? Colors.white38
-                    : const Color(0xFFBBBBBB),
+                    : ThemeService.lightSubtext,
               ),
               const SizedBox(height: 16),
               Text(
@@ -500,7 +506,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                   fontSize: 16,
                   color: widget.isDarkMode
                       ? Colors.white70
-                      : const Color(0xFF555555),
+                      : ThemeService.lightSubtext,
                 ),
               ),
               const SizedBox(height: 8),
@@ -510,7 +516,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                   fontSize: 12,
                   color: widget.isDarkMode
                       ? Colors.white60
-                      : const Color(0xFF888888),
+                      : ThemeService.lightSubtext,
                 ),
               ),
             ],
@@ -533,7 +539,7 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: widget.isDarkMode ? Colors.white : const Color(0xFF222222),
+              color: widget.isDarkMode ? Colors.white : ThemeService.lightText,
             ),
           ),
         ),
@@ -551,11 +557,14 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: widget.isDarkMode
                       ? Colors.white
-                      : const Color(0xFF222222),
+                      : ThemeService.lightText,
                   side: BorderSide(
                     color: widget.isDarkMode
                         ? Colors.white38
-                        : const Color(0xFFBBBBBB),
+                        : ThemeService.lightBorder,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                   ),
                 ),
                 child: Text(LanguageService.tr('load_more')),

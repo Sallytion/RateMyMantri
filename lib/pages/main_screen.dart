@@ -69,7 +69,7 @@ class _MainScreenState extends State<MainScreen> {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor: isDarkMode ? ThemeService.bgMain : Colors.white,
+        systemNavigationBarColor: isDarkMode ? ThemeService.bgMain : ThemeService.lightBg,
         systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
       ),
     );
@@ -127,59 +127,70 @@ class _MainScreenState extends State<MainScreen> {
         }
       },
       child: Scaffold(
+      backgroundColor: isDarkMode ? ThemeService.bgMain : ThemeService.lightBg,
       body: IndexedStack(
         index: _currentIndex,
         children: _buildPages(),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? ThemeService.bgMain : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 20,
-              color: Colors.black.withValues(alpha: .1),
-            )
-          ],
+          color: isDarkMode ? ThemeService.bgMain : ThemeService.lightBg,
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: 24,
+                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.08),
+                ),
+              ],
+            ),
             child: GNav(
               rippleColor: isDarkMode
-                  ? ThemeService.bgElev
-                  : Colors.grey[300]!,
+                  ? ThemeService.bgBorder
+                  : ThemeService.lightBgAlt,
               hoverColor: isDarkMode
-                  ? ThemeService.bgElev
-                  : Colors.grey[100]!,
+                  ? ThemeService.bgBorder
+                  : ThemeService.lightBgAlt,
               gap: 6,
               activeColor: ThemeService.accent,
-              iconSize: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              duration: const Duration(milliseconds: 400),
+              iconSize: 22,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              textStyle: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: ThemeService.accent,
+              ),
+              duration: const Duration(milliseconds: 350),
               tabBackgroundColor: isDarkMode
-                  ? ThemeService.bgElev
+                  ? ThemeService.bgBorder
                   : ThemeService.accent.withValues(alpha: 0.1),
-              color: isDarkMode ? const Color(0xFF717171) : Colors.grey,
+              color: isDarkMode ? const Color(0xFF666666) : const Color(0xFFAAAAAA),
               tabs: [
                 GButton(
-                  icon: Icons.home,
+                  icon: Icons.home_rounded,
                   text: LanguageService.tr('nav_home'),
                 ),
                 GButton(
-                  icon: Icons.search,
+                  icon: Icons.search_rounded,
                   text: LanguageService.tr('nav_search'),
                 ),
                 GButton(
-                  icon: Icons.star,
+                  icon: Icons.star_rounded,
                   text: LanguageService.tr('nav_rate'),
                 ),
                 GButton(
-                  icon: Icons.article,
+                  icon: Icons.article_rounded,
                   text: LanguageService.tr('nav_news'),
                 ),
                 GButton(
-                  icon: Icons.person,
+                  icon: Icons.person_rounded,
                   text: LanguageService.tr('nav_profile'),
                 ),
               ],
