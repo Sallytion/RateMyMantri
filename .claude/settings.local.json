@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze lib/services/ratings_service.dart lib/services/home_sections_service.dart lib/services/representative_service.dart lib/config/api_config.dart)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}

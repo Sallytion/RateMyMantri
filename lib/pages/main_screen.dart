@@ -37,6 +37,8 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   // Track which tabs have been visited (lazy-build on first visit)
   final List<bool> _visited = [true, false, false, false, false];
+  // Navigation history stack — pressing back traverses this
+  final List<int> _tabHistory = [];
 
   @override
   void initState() {
@@ -46,6 +48,20 @@ class _MainScreenState extends State<MainScreen> {
     if (_currentIndex >= 0 && _currentIndex < _visited.length) {
       _visited[_currentIndex] = true;
     }
+    // If restoring to a non-home tab, seed history so back goes to Home first
+    if (_currentIndex != 0) {
+      _tabHistory.add(0);
+    }
+  }
+
+  void _switchToTab(int index) {
+    if (index == _currentIndex) return;
+    _tabHistory.add(_currentIndex);
+    PrefsService.instance.setInt('last_nav_index', index);
+    setState(() {
+      _visited[index] = true;
+      _currentIndex = index;
+    });
   }
 
   void _updateSystemUI(bool isDarkMode) {
@@ -65,13 +81,7 @@ class _MainScreenState extends State<MainScreen> {
   List<Widget> _buildPages() {
     return [
       // 0 – Home (always visited on launch)
-      HomePage(onNavigateToTab: (index) {
-        PrefsService.instance.setInt('last_nav_index', index);
-        setState(() {
-          _visited[index] = true;
-          _currentIndex = index;
-        });
-      }),
+      HomePage(onNavigateToTab: _switchToTab),
       // 1 – Search
       if (_visited[1]) SearchPage(key: SearchPage.globalKey) else const SizedBox.shrink(),
       // 2 – Rate
@@ -102,7 +112,21 @@ class _MainScreenState extends State<MainScreen> {
     // Keep system chrome in sync
     _updateSystemUI(isDarkMode);
 
-    return Scaffold(
+    return PopScope(
+      canPop: _currentIndex == 0 && _tabHistory.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return; // on Home with no history — system exits the app
+        if (_tabHistory.isNotEmpty) {
+          final prev = _tabHistory.removeLast();
+          PrefsService.instance.setInt('last_nav_index', prev);
+          setState(() => _currentIndex = prev);
+        } else {
+          // Not on Home but history is empty — go Home
+          PrefsService.instance.setInt('last_nav_index', 0);
+          setState(() => _currentIndex = 0);
+        }
+      },
+      child: Scaffold(
       body: IndexedStack(
         index: _currentIndex,
         children: _buildPages(),
@@ -164,15 +188,12 @@ class _MainScreenState extends State<MainScreen> {
                 if (index == 1 && _currentIndex == 1) {
                   SearchPage.globalKey.currentState?.focusSearchBar();
                 }
-                PrefsService.instance.setInt('last_nav_index', index);
-                setState(() {
-                  _visited[index] = true;
-                  _currentIndex = index;
-                });
+                _switchToTab(index);
               },
             ),
           ),
         ),
+      ),
       ),
     );
   }
