@@ -67,3 +67,4 @@ design_assets/
 *.apks
 *.aab
 app/
+*.zip
