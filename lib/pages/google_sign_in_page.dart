@@ -318,264 +318,278 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenH = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 80),
-
-              // App Logo
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  isDark
-                      ? 'lib/assets/logo/rate_my_mantri_dark.png'
-                      : 'lib/assets/logo/rate_my_mantri_light.png',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.contain,
+      backgroundColor: isDark ? ThemeService.bgMain : const Color(0xFFF5F3EF),
+      body: Stack(
+        children: [
+          // ── Top hero zone ──────────────────────────────────────
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: screenH * 0.45,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 0.8,
+                  colors: isDark
+                      ? [ThemeService.bgElev, ThemeService.bgMain]
+                      : [ThemeService.pastelLavender.withValues(alpha: 0.3), Colors.transparent],
                 ),
               ),
-
-              const SizedBox(height: 40),
-
-              Text(
-                LanguageService.tr('welcome_title').replaceAll('\\n', '\n'),
-                style: TextStyle(
-                  fontSize: 38,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : ThemeService.lightText,
-                  height: 1.2,
-                  letterSpacing: -0.8,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Text(
-                LanguageService.tr('sign_in_desc'),
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDark ? Colors.white70 : ThemeService.lightSubtext,
-                  fontWeight: FontWeight.w400,
-                  height: 1.5,
-                ),
-              ),
-
-              const Spacer(),
-
-              // Error message
-              if (_errorMessage != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.red.shade900.withValues(alpha: 0.3) : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-                    border: Border.all(
-                      color: isDark ? Colors.red.shade700 : Colors.red.shade200,
-                    ),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(
-                      color: isDark ? Colors.red.shade300 : Colors.red.shade700,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-              // TOS Checkbox
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: _tosAccepted,
-                    activeColor: ThemeService.accent,
-                    checkColor: Colors.white,
-                    side: BorderSide(
-                      color: isDark ? Colors.white54 : Colors.black54,
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        _tosAccepted = val ?? false;
-                      });
-                    },
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () async {
-                        final url = Uri.parse('https://ratemymantri.sallytion.qzz.io/TOS');
-                        try {
-                          await launchUrl(url, mode: LaunchMode.externalApplication);
-                        } catch (e) {
-                          debugPrint('Error launching TOS URL: $e');
-                        }
-                      },
-                      child: Text.rich(
-                        TextSpan(
-                          text: 'By signing in you agree to our ',
-                          style: TextStyle(
-                            color: isDark ? Colors.white70 : ThemeService.lightSubtext,
-                            fontSize: 14,
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
                           ),
-                          children: [
-                            TextSpan(
-                              text: 'TOS',
-                              style: TextStyle(
-                                color: ThemeService.accent,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          isDark
+                              ? 'lib/assets/logo/rate_my_mantri_dark.png'
+                              : 'lib/assets/logo/rate_my_mantri_light.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Rate My Mantri',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: ThemeService.accent,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                        LanguageService.tr('sign_in_desc'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white60 : ThemeService.lightSubtext,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Bottom card zone ───────────────────────────────────
+          Positioned(
+            top: screenH * 0.42,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? ThemeService.bgElev : ThemeService.lightCard,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, -4),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              // Google Sign-In Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: (_isLoading || !_tosAccepted) ? null : _handleSignIn,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? ThemeService.bgElev : ThemeService.lightCard,
-                    foregroundColor: isDark ? Colors.white : ThemeService.lightText,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(ThemeService.cardRadius - 10),
-                      side: BorderSide(
-                        color: isDark ? const Color(0xFF444444) : ThemeService.lightBorder,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Welcome title
+                    Text(
+                      LanguageService.tr('welcome_title').replaceAll('\\n', '\n'),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : ThemeService.lightText,
+                        height: 1.2,
+                        letterSpacing: -0.5,
                       ),
                     ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF4285F4),
+                    const SizedBox(height: 28),
+
+                    // TOS Checkbox
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          value: _tosAccepted,
+                          activeColor: ThemeService.accent,
+                          checkColor: Colors.white,
+                          side: BorderSide(color: isDark ? Colors.white54 : Colors.black54),
+                          onChanged: (val) => setState(() => _tosAccepted = val ?? false),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final url = Uri.parse('https://ratemymantri.sallytion.qzz.io/TOS');
+                              try {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              } catch (e) {
+                                debugPrint('Error launching TOS URL: $e');
+                              }
+                            },
+                            child: Text.rich(
+                              TextSpan(
+                                text: 'By signing in you agree to our ',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white70 : ThemeService.lightSubtext,
+                                  fontSize: 14,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'TOS',
+                                    style: TextStyle(
+                                      color: ThemeService.accent,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Google "G" Logo
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: isDark ? ThemeService.bgElev : ThemeService.lightCard,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'G',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    foreground: Paint()
-                                      ..shader =
-                                          const LinearGradient(
-                                            colors: [
-                                              Color(0xFF4285F4),
-                                              Color(0xFFEA4335),
-                                              Color(0xFFFBBC05),
-                                              Color(0xFF34A853),
-                                            ],
-                                          ).createShader(
-                                            const Rect.fromLTWH(0, 0, 18, 18),
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              LanguageService.tr('continue_google'),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
                         ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Terms text
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    LanguageService.tr('terms_agree'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white54 : ThemeService.lightSubtext,
+                      ],
                     ),
-                  ),
-                ),
-              ),
+                    const SizedBox(height: 16),
 
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-        Positioned(
-          top: 16,
-          right: 16,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : ThemeService.lightCardAlt,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.info_outline_rounded, color: isDark ? Colors.white70 : ThemeService.lightText),
-                  onPressed: () => _showDisclaimerPopup(force: true),
-                  tooltip: LanguageService.tr('about_app_disclaimer'),
+                    // Error message
+                    if (_errorMessage != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.red.shade900.withValues(alpha: 0.3) : Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                          border: Border.all(color: isDark ? Colors.red.shade700 : Colors.red.shade200),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            color: isDark ? Colors.red.shade300 : Colors.red.shade700,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                    // Google Sign-In Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: (_isLoading || !_tosAccepted) ? null : _handleSignIn,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? ThemeService.bgMain : ThemeService.lightBg,
+                          foregroundColor: isDark ? Colors.white : ThemeService.lightText,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: isDark ? const Color(0xFF444444) : ThemeService.lightBorder),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4285F4)),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? ThemeService.bgMain : ThemeService.lightBg,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'G',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          foreground: Paint()
+                                            ..shader = const LinearGradient(
+                                              colors: [Color(0xFF4285F4), Color(0xFFEA4335), Color(0xFFFBBC05), Color(0xFF34A853)],
+                                            ).createShader(const Rect.fromLTWH(0, 0, 18, 18)),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    LanguageService.tr('continue_google'),
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Language + Info row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _showLanguageSheet,
+                          icon: Icon(Icons.language_rounded, size: 18, color: isDark ? Colors.white60 : ThemeService.lightSubtext),
+                          label: Text(
+                            LanguageService.tr('language'),
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : ThemeService.lightSubtext),
+                          ),
+                        ),
+                        Text(' · ', style: TextStyle(color: isDark ? Colors.white30 : ThemeService.lightBorder)),
+                        TextButton.icon(
+                          onPressed: () => _showDisclaimerPopup(force: true),
+                          icon: Icon(Icons.info_outline_rounded, size: 18, color: isDark ? Colors.white60 : ThemeService.lightSubtext),
+                          label: Text(
+                            LanguageService.tr('about_app_disclaimer'),
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : ThemeService.lightSubtext),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : ThemeService.lightCardAlt,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.language_rounded, color: isDark ? Colors.white70 : ThemeService.lightText),
-                  onPressed: _showLanguageSheet,
-                  tooltip: LanguageService.tr('language'),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
-    ),
-  ),
-);
+        ],
+      ),
+    );
   }
 }

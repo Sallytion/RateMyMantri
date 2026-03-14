@@ -39,6 +39,9 @@ class Article {
 class NewsPage extends StatefulWidget {
   const NewsPage({super.key});
 
+  static final GlobalKey<_NewsPageState> globalKey = GlobalKey<_NewsPageState>();
+  static void clearCache() => _NewsPageState.clearCache();
+
   @override
   State<NewsPage> createState() => _NewsPageState();
 }
@@ -65,6 +68,7 @@ class _NewsPageState extends State<NewsPage> {
     'India',
   ];
   String _selectedTag = 'All';
+  String? _pendingTag;
   final Map<int, String> _imageCache = {};
   final Set<int> _processingIndices = {};
   final GoogleNewsDecoder _newsDecoder = GoogleNewsDecoder();
@@ -76,6 +80,12 @@ class _NewsPageState extends State<NewsPage> {
   static final Map<String, List<Article>> _cachedArticlesByTag = {};
   static final Map<String, Map<int, String>> _cachedImagesByTag = {};
   static String? _cachedSelectedTag;
+
+  static void clearCache() {
+    _cachedArticlesByTag.clear();
+    _cachedImagesByTag.clear();
+    _cachedSelectedTag = null;
+  }
 
   @override
   void initState() {
@@ -93,6 +103,55 @@ class _NewsPageState extends State<NewsPage> {
     }
     _pageController.addListener(_onPageChanged);
     _loadSavedArticles();
+    // If a tag was requested before build (e.g. from HomePage "See All")
+    if (_pendingTag != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _selectTagProgrammatically(_pendingTag!));
+      _pendingTag = null;
+    }
+  }
+
+  /// Called externally (e.g. from HomePage) to switch to a specific tag.
+  void selectTag(String tag) {
+    if (mounted) {
+      _selectTagProgrammatically(tag);
+    } else {
+      _pendingTag = tag;
+    }
+  }
+
+  void _selectTagProgrammatically(String tag) {
+    if (_selectedTag == tag) return;
+    setState(() => _selectedTag = tag);
+    _cachedSelectedTag = tag;
+
+    if (tag == 'Local') {
+      _handleLocalTag();
+    } else {
+      final url = _buildUrlForTag(tag);
+      _fetchFeed(url: url, tag: tag);
+    }
+  }
+
+  Future<void> _handleLocalTag() async {
+    if (_cachedArticlesByTag.containsKey('Local')) {
+      await _fetchFeed(tag: 'Local');
+      return;
+    }
+    var constituency = ConstituencyNotifier.instance.current;
+    constituency ??= await ConstituencyService().getCurrentConstituency();
+    if (constituency != null) {
+      final query = Uri.encodeComponent(constituency.nameEn);
+      final url = 'https://news.google.com/rss/search?q=$query&${LanguageService.newsGlParams}';
+      await _fetchFeed(url: url, tag: 'Local');
+    } else {
+      final loc = await _getCityFromIp();
+      if (loc != null) {
+        final url = _buildGNewsUrlForCity(loc['city']!, loc['country']!);
+        await _fetchFeed(url: url, tag: 'Local');
+      } else {
+        await _fetchFeed(tag: 'Local');
+      }
+    }
   }
 
   Future<void> _loadSavedArticles() async {

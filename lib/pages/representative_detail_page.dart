@@ -14,6 +14,7 @@ import '../utils/formatters.dart';
 import '../utils/widgets/placeholder_avatar.dart';
 import '../widgets/rating_form_widget.dart';
 import '../widgets/ratings_display_widget.dart';
+import 'rate_page.dart';
 import '../widgets/skeleton_widgets.dart';
 
 class RepresentativeDetailPage extends StatefulWidget {
@@ -161,6 +162,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
             _prefetchService.invalidate(widget.representativeId);
             _checkAuthAndLoadUserRating();
             _loadRatingStatistics();
+            // Invalidate Rate tab cache so it re-fetches on next visit
+            RatePage.clearCache();
             // Force refresh the ratings display
             setState(() {
               _ratingsRefreshKey++;

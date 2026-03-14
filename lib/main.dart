@@ -62,9 +62,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, theme, _) {
+      child: Consumer2<ThemeProvider, LanguageProvider>(
+        builder: (context, theme, lang, _) {
           return MaterialApp(
+            key: ValueKey('app_${lang.code}'),
             title: 'Rate My Mantri',
             debugShowCheckedModeBanner: false,
             theme: ThemeData(

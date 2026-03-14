@@ -24,6 +24,7 @@ import 'constituency_search_page.dart';
 import 'representative_detail_page.dart';
 import 'article_viewer_page.dart';
 import 'webview_page.dart';
+import 'news_page.dart';
 import '../widgets/skeleton_widgets.dart';
 
 class _HomeArticle {
@@ -48,6 +49,9 @@ class HomePage extends StatefulWidget {
 
   const HomePage({super.key, this.onNavigateToTab});
 
+  /// Clears all static caches (call on language change).
+  static void clearCache() => _HomePageState.clearCache();
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -68,6 +72,13 @@ class _HomePageState extends State<HomePage> {
   static List<_HomeArticle>? _cachedNewsArticles;
   static bool _newsFetchedThisSession = false;
 
+  static void clearCache() {
+    _cachedConstituency = null;
+    _cachedRepresentatives = null;
+    _cachedNewsArticles = null;
+    _newsFetchedThisSession = false;
+  }
+
   // Home sections (API-driven)
   List<HomeSection> _homeSections = [];
   bool _isLoadingSections = true;
@@ -81,7 +92,6 @@ class _HomePageState extends State<HomePage> {
   final PageController _repPageController = PageController(viewportFraction: 1.0);
   final ScrollController _dotScrollController = ScrollController();
   int _currentRepIndex = 0;
-
   // News
   List<_HomeArticle> _newsArticles = [];
   bool _isLoadingNews = true;
@@ -345,6 +355,10 @@ class _HomePageState extends State<HomePage> {
     return PartyUtils.getPartyColor(party);
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ═══  BUILD + WIDGET METHODS (layout overhaul)  ═══════════════
+  // ═══════════════════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
@@ -355,52 +369,43 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // Top Bar
+            // ── Header greeting area ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       LanguageService.tr('home'),
                       style: TextStyle(
-                        fontSize: ThemeService.titleSize,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
                         color: isDarkMode
                             ? Colors.white
                             : ThemeService.lightText,
                         letterSpacing: -0.5,
+                        height: 1.1,
                       ),
                     ),
+                    const Spacer(),
                     GestureDetector(
                       onTap: _navigateToConstituencySearch,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: isDarkMode
-                              ? ThemeService.bgElev
-                              : ThemeService.lightCardAlt,
-                          borderRadius: BorderRadius.circular(24),
-                          border: isDarkMode
-                              ? null
-                              : Border.all(
-                                  color: ThemeService.lightBorder,
-                                  width: 1,
-                                ),
+                              ? const Color(0xFF2A2A2A)
+                              : const Color(0xFFF0F0F0),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.location_on_outlined,
-                              size: 15,
-                              color: isDarkMode
-                                  ? const Color(0xFFB0B0B0)
-                                  : ThemeService.lightSubtext,
+                              Icons.location_on,
+                              size: 14,
+                              color: ThemeService.accent,
                             ),
                             const SizedBox(width: 4),
                             _isLoadingConstituency
@@ -408,23 +413,28 @@ class _HomePageState extends State<HomePage> {
                                     isDarkMode: isDarkMode,
                                     child: SkeletonBox(
                                       width: 70,
-                                      height: 13,
+                                      height: 12,
                                       borderRadius: 4,
                                     ),
                                   )
-                                : Text(
-                                    _currentConstituency != null
-                                        ? _currentConstituency!.name
-                                        : LanguageService.tr('set_location'),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: isDarkMode
-                                          ? const Color(0xFFB0B0B0)
-                                          : ThemeService.lightSubtext,
+                                : ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 120),
+                                    child: Text(
+                                      _currentConstituency != null
+                                          ? _currentConstituency!.name
+                                          : LanguageService.tr('set_location'),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: isDarkMode
+                                            ? const Color(0xFFB0B0B0)
+                                            : ThemeService.lightSubtext,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 4),
                             Icon(
                               Icons.keyboard_arrow_down,
                               size: 16,
@@ -441,18 +451,18 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Representatives Hero Cards (Swipable)
+            // ── Representatives horizontal list ──
             SliverToBoxAdapter(child: _buildRepresentativesSection()),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
-            // Local News Section (returns List<Widget> of slivers)
+            // ── News section ──
             ..._buildNewsSlivers(),
 
-            // API-driven banner sections (Noticeboard, Games, …)
+            // ── API-driven banner sections ──
             ..._buildApiSections(),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            const SliverToBoxAdapter(child: SizedBox(height: 28)),
           ],
         ),
       ),
@@ -492,34 +502,20 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.location_off,
-                  color: isDarkMode
-                      ? Colors.white54
-                      : ThemeService.lightSubtext,
-                  size: 40,
-                ),
+                Icon(Icons.location_off, color: isDarkMode ? Colors.white54 : ThemeService.lightSubtext, size: 40),
                 const SizedBox(height: 12),
                 Text(
                   _currentConstituency == null
                       ? LanguageService.tr('set_constituency')
                       : LanguageService.tr('no_reps_found'),
-                  style: TextStyle(
-                    color: isDarkMode
-                        ? Colors.white70
-                        : ThemeService.lightText,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: isDarkMode ? Colors.white70 : ThemeService.lightText, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
                 if (_currentConstituency == null) ...[
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _navigateToConstituencySearch,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ThemeService.accent,
-                      foregroundColor: Colors.white,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: ThemeService.accent, foregroundColor: Colors.white),
                     child: Text(LanguageService.tr('set_location')),
                   ),
                 ],
@@ -557,12 +553,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Smoothly scrolls the dot strip to keep the active dot centered.
   void _scrollDotsToActive(int index) {
     if (!_dotScrollController.hasClients) return;
-    // Each dot slot is 16px wide (8px dot + 4px margin each side).
     const double slotW = 16.0;
-    const double visibleW = 7 * slotW; // 112px viewport
+    const double visibleW = 7 * slotW;
     final double target = (index * slotW) - (visibleW / 2) + (slotW / 2);
     final double maxScroll = _dotScrollController.position.maxScrollExtent;
     _dotScrollController.animateTo(
@@ -572,20 +566,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Dot indicator: renders ALL dots in a clipped scrollable row.
-  /// The strip scrolls (via [_dotScrollController]) so the active dot
-  /// is always centered – giving a true sliding animation.
   Widget _buildRepDots() {
     final int total = _representatives.length;
     if (total <= 1) return const SizedBox.shrink();
 
-    // Fixed layout slot per dot so scroll math is exact.
-    const double slotW = 16.0;   // 8px dot + 4px margin each side
+    const double slotW = 16.0;
     const double dotH  = 8.0;
     const double activeDotW   = 24.0;
     const double inactiveDotW = 8.0;
     const int    maxVisible   = 7;
-    const double viewportW    = maxVisible * slotW; // 112px
+    const double viewportW    = maxVisible * slotW;
 
     Widget buildDot(int i) {
       final bool isActive = i == _currentRepIndex;
@@ -601,9 +591,7 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               color: isActive
                   ? ThemeService.accent
-                  : (isDarkMode
-                      ? const Color(0xFF4A4A4A)
-                      : ThemeService.lightBorder),
+                  : (isDarkMode ? const Color(0xFF4A4A4A) : ThemeService.lightBorder),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -611,7 +599,6 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // ≤ 7 reps: just a plain row, no scrolling needed.
     if (total <= maxVisible) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -619,7 +606,6 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // > 7 reps: clipped scrollable strip.
     return SizedBox(
       width: viewportW,
       height: dotH,
@@ -628,9 +614,7 @@ class _HomePageState extends State<HomePage> {
           controller: _dotScrollController,
           scrollDirection: Axis.horizontal,
           physics: const NeverScrollableScrollPhysics(),
-          child: Row(
-            children: List.generate(total, buildDot),
-          ),
+          child: Row(children: List.generate(total, buildDot)),
         ),
       ),
     );
@@ -665,25 +649,17 @@ class _HomePageState extends State<HomePage> {
             ? LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  partyColor.withValues(alpha: 0.9),
-                  partyColor.withValues(alpha: 0.7),
-                ],
+                colors: [partyColor.withValues(alpha: 0.9), partyColor.withValues(alpha: 0.7)],
               )
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  partyColor.withValues(alpha: 0.85),
-                  Color.lerp(partyColor, pastelTint, 0.3)!.withValues(alpha: 0.75),
-                ],
+                colors: [partyColor.withValues(alpha: 0.85), Color.lerp(partyColor, pastelTint, 0.3)!.withValues(alpha: 0.75)],
               ),
         borderRadius: BorderRadius.circular(ThemeService.cardRadius),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode
-                ? partyColor.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.06),
+            color: isDarkMode ? partyColor.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -691,12 +667,9 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Stack(
         children: [
-          // Profile image on right
           if (rep.imageUrl != null && rep.imageUrl!.isNotEmpty)
             Positioned(
-              right: 0,
-              bottom: 0,
-              top: 0,
+              right: 0, bottom: 0, top: 0,
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
                   topRight: Radius.circular(ThemeService.cardRadius),
@@ -706,10 +679,7 @@ class _HomePageState extends State<HomePage> {
                   shaderCallback: (rect) => LinearGradient(
                     begin: Alignment.centerRight,
                     end: Alignment.centerLeft,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.3),
-                      Colors.transparent,
-                    ],
+                    colors: [Colors.white.withValues(alpha: 0.3), Colors.transparent],
                   ).createShader(rect),
                   blendMode: BlendMode.dstIn,
                   child: CachedNetworkImage(
@@ -722,158 +692,68 @@ class _HomePageState extends State<HomePage> {
                       highlightColor: Colors.grey[100]!,
                       child: Container(width: 160, color: Colors.white),
                     ),
-                    errorWidget: (_, _, _) => Container(
-                      width: 160,
-                      color: partyColor.withValues(alpha: 0.3),
-                    ),
+                    errorWidget: (_, _, _) => Container(width: 160, color: partyColor.withValues(alpha: 0.3)),
                   ),
                 ),
               ),
             ),
-          // Content
           ClipRect(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                // Party badge + Office type
-                Row(
-                  children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          _safeTranslit(rep.party),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Row(
+                    children: [
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(6)),
+                          child: Text(_safeTranslit(rep.party), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        officeLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // Name
-                Text(
-                  _safeTranslit(_formatRepName(rep.fullName)),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                      const SizedBox(width: 8),
+                      Flexible(child: Text(officeLabel, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                // Constituency
-                Text(
-                  '${_safeTranslit(rep.constituency)}, ${_safeTranslit(rep.state)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.7),
+                  const SizedBox(height: 6),
+                  Text(_safeTranslit(_formatRepName(rep.fullName)), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(_formatRepLocation(rep), style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(rating != null ? rating.toStringAsFixed(1) : 'N/A', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(width: 8),
+                      if (rating != null) ...[
+                        ...List.generate(fullStars, (_) => const Icon(Icons.star, color: Colors.amber, size: 16)),
+                        if (hasHalfStar) const Icon(Icons.star_half, color: Colors.amber, size: 16),
+                        ...List.generate(emptyStars, (_) => const Icon(Icons.star_border, color: Colors.amber, size: 16)),
+                        const SizedBox(width: 6),
+                        Text('(${rep.totalRatings ?? 0})', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
+                      ] else ...[
+                        Text(LanguageService.tr('not_yet_rated'), style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7))),
+                      ],
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                // Rating
-                Row(
-                  children: [
-                    Text(
-                      rating != null ? rating.toStringAsFixed(1) : 'N/A',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (rating != null) ...[
-                      ...List.generate(fullStars, (_) => const Icon(Icons.star, color: Colors.amber, size: 16)),
-                      if (hasHalfStar) const Icon(Icons.star_half, color: Colors.amber, size: 16),
-                      ...List.generate(emptyStars, (_) => const Icon(Icons.star_border, color: Colors.amber, size: 16)),
-                      const SizedBox(width: 6),
-                      Text(
-                        '(${rep.totalRatings ?? 0})',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        LanguageService.tr('not_yet_rated'),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => RepresentativeDetailPage(representativeId: rep.id.toString(), isDarkMode: isDarkMode)));
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: partyColor, elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                        child: Text(LanguageService.tr('rate_performance'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Buttons
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RepresentativeDetailPage(
-                              representativeId: rep.id.toString(),
-                              isDarkMode: isDarkMode,
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: partyColor,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        LanguageService.tr('rate_performance'),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         ],
       ),
     );
@@ -892,6 +772,36 @@ class _HomePageState extends State<HomePage> {
       if (word.isEmpty) return word;
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     }).join(' ');
+  }
+
+  String _canonicalLocation(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  bool _isSameLocation(String a, String b) {
+    final ca = _canonicalLocation(a);
+    final cb = _canonicalLocation(b);
+    return ca.isNotEmpty && cb.isNotEmpty && ca == cb;
+  }
+
+  String _formatRepLocation(Representative rep) {
+    final selectedConstituency = (_currentConstituency?.nameEn ?? '').trim();
+    final constituency = rep.constituency.trim();
+    final state = rep.state.trim();
+
+    final bool shouldUseSelected =
+        selectedConstituency.isNotEmpty &&
+        (constituency.isEmpty || _isSameLocation(constituency, state));
+
+    final primary = shouldUseSelected ? selectedConstituency : constituency;
+
+    if (primary.isEmpty && state.isEmpty) return '';
+    if (primary.isEmpty) return _safeTranslit(state);
+    if (state.isEmpty || _isSameLocation(primary, state)) {
+      return _safeTranslit(primary);
+    }
+
+    return '${_safeTranslit(primary)}, ${_safeTranslit(state)}';
   }
 
   // ─── API-driven Banner Sections ──────────────────────────────────
@@ -963,9 +873,8 @@ class _HomePageState extends State<HomePage> {
   /// Shows a shimmer placeholder while loading; hides completely on empty list.
   List<Widget> _buildApiSections() {
     if (_isLoadingSections) {
-      // Subtle shimmer placeholder for two expected sections
       return [
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        const SliverToBoxAdapter(child: SizedBox(height: 20)),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -979,15 +888,15 @@ class _HomePageState extends State<HomePage> {
                   SkeletonBox(
                     width: double.infinity,
                     height: 160,
-                    borderRadius: 16,
+                    borderRadius: 20,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   SkeletonBox(width: 100, height: 20, borderRadius: 6),
                   const SizedBox(height: 12),
                   SkeletonBox(
                     width: double.infinity,
                     height: 160,
-                    borderRadius: 16,
+                    borderRadius: 20,
                   ),
                 ],
               ),
@@ -1003,7 +912,7 @@ class _HomePageState extends State<HomePage> {
     for (int i = 0; i < _homeSections.length; i++) {
       final section = _homeSections[i];
       if (section.type == 'webview_banner') {
-        slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 16)));
+        slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 28)));
         slivers.add(
           SliverToBoxAdapter(
             child: _buildWebviewBannerCard(section, i),
@@ -1053,7 +962,7 @@ class _HomePageState extends State<HomePage> {
               Text(
                 section.title,
                 style: TextStyle(
-                  fontSize: ThemeService.sectionSize,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: isDarkMode
                       ? Colors.white
@@ -1075,7 +984,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+              borderRadius: BorderRadius.circular(20),
               child: CachedNetworkImage(
                 imageUrl: bannerImageUrl,
                 fit: BoxFit.cover,
@@ -1086,7 +995,7 @@ class _HomePageState extends State<HomePage> {
                     color: isDarkMode
                         ? ThemeService.bgElev
                         : _sectionPastel(sectionIndex),
-                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 errorWidget: (_, __, ___) => Container(
@@ -1095,9 +1004,13 @@ class _HomePageState extends State<HomePage> {
                     gradient: LinearGradient(
                       colors: isDarkMode
                           ? [const Color(0xFF1a1d27), const Color(0xFF0f1117)]
-                          : [_sectionPastel(sectionIndex), _sectionPastel(sectionIndex).withValues(alpha: 0.6)],
+                          : [
+                              _sectionPastel(sectionIndex),
+                              _sectionPastel(sectionIndex)
+                                  .withValues(alpha: 0.6),
+                            ],
                     ),
-                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Center(
                     child: Icon(
@@ -1119,10 +1032,10 @@ class _HomePageState extends State<HomePage> {
 
   List<Widget> _buildNewsSlivers() {
     return [
-      // Section header with arrow
+      // Section header: "Latest News" + "See All"
       SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1130,7 +1043,7 @@ class _HomePageState extends State<HomePage> {
                 child: Text(
                   LanguageService.tr('local_news'),
                   style: TextStyle(
-                    fontSize: ThemeService.sectionSize,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: isDarkMode
                         ? Colors.white
@@ -1142,33 +1055,27 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
-                  // Navigate to News tab (index 3)
+                  // Navigate to News tab (index 3) and select Local tag
                   widget.onNavigateToTab?.call(3);
+                  // After tab switch, tell NewsPage to show Local
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    NewsPage.globalKey.currentState?.selectTag('Local');
+                  });
                 },
-                child: Row(
-                  children: [
-                    Text(
-                      LanguageService.tr('see_all'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: ThemeService.accent,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: ThemeService.accent,
-                    ),
-                  ],
+                child: Text(
+                  LanguageService.tr('see_all'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeService.accent,
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
-      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+      const SliverToBoxAdapter(child: SizedBox(height: 14)),
       if (_isLoadingNews)
         SliverToBoxAdapter(
           child: NewsListSkeleton(isDarkMode: isDarkMode),
@@ -1176,14 +1083,15 @@ class _HomePageState extends State<HomePage> {
       else if (_newsArticles.isEmpty)
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Container(
               height: 100,
               decoration: BoxDecoration(
                 color: isDarkMode
                     ? ThemeService.bgElev
                     : ThemeService.lightCard,
-                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                borderRadius:
+                    BorderRadius.circular(ThemeService.smallRadius),
               ),
               child: Center(
                 child: Text(
@@ -1199,165 +1107,126 @@ class _HomePageState extends State<HomePage> {
           ),
         )
       else
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                // Interleave items with 12px separators
-                final itemIndex = index ~/ 2;
-                if (index.isOdd) {
-                  return const SizedBox(height: 12);
-                }
-                return _buildNewsListTile(_newsArticles[itemIndex], itemIndex);
-              },
-              childCount: _newsArticles.isEmpty
-                  ? 0
-                  : _newsArticles.length * 2 - 1,
-            ),
-          ),
-        ),
+        ..._buildNewsContent(),
     ];
   }
 
-  Widget _buildNewsListTile(_HomeArticle article, int index) {
-    return GestureDetector(
-      onTap: () {
-        final url = article.decodedUrl ?? article.link;
-        // If article text couldn't be extracted, open link directly
-        if (article.articleText == null || article.articleText!.isEmpty) {
-          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-          return;
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ArticleViewerPage(
-              title: article.title,
-              imageUrl: article.imageUrl ?? '',
-              articleText: article.articleText,
-              source: article.source,
-              pubDate: article.pubDate,
-              originalUrl: url,
-              isDarkMode: isDarkMode,
-            ),
+  /// Builds a simple vertical list of news cards.
+  List<Widget> _buildNewsContent() {
+    return _newsArticles.map((article) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: _buildNewsCard(article),
+        ),
+      );
+    }).toList();
+  }
+
+  /// Clean news card with thumbnail on left, text on right.
+  Widget _buildNewsCard(_HomeArticle article) {
+    void onTap() {
+      final url = article.decodedUrl ?? article.link;
+      if (article.articleText == null || article.articleText!.isEmpty) {
+        launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        return;
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ArticleViewerPage(
+            title: article.title,
+            imageUrl: article.imageUrl ?? '',
+            articleText: article.articleText,
+            source: article.source,
+            pubDate: article.pubDate,
+            originalUrl: url,
+            isDarkMode: isDarkMode,
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode
-              ? ThemeService.bgElev
-              : ThemeService.lightCard,
-          borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+          color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+          borderRadius: BorderRadius.circular(ThemeService.smallRadius),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.06),
-              blurRadius: 10,
+              color: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.05),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
+        clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
             // Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(ThemeService.cardRadius),
-                bottomLeft: Radius.circular(ThemeService.cardRadius),
-              ),
-              child: SizedBox(
-                width: 100,
-                height: 100,
-                child: article.imageUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: article.imageUrl!,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 200,
-                        memCacheHeight: 200,
-                        placeholder: (context, url) => Shimmer.fromColors(
-                          baseColor: Colors.grey[300]!,
-                          highlightColor: Colors.grey[100]!,
-                          child: Container(color: Colors.white),
-                        ),
-                        errorWidget: (_, _, _) => Container(
-                          color: isDarkMode
-                              ? ThemeService.bgBorder
-                              : ThemeService.lightCardAlt,
-                          child: Icon(
-                            Icons.article,
-                            color: isDarkMode
-                                ? const Color(0xFFBDBDBD)
-                                : ThemeService.lightSubtext,
-                            size: 32,
-                          ),
-                        ),
-                      )
-                    : Container(
-                        color: isDarkMode
-                            ? ThemeService.bgBorder
-                            : ThemeService.lightCardAlt,
-                        child: Icon(
-                          Icons.article,
-                          color: isDarkMode
-                              ? const Color(0xFFBDBDBD)
-                              : ThemeService.lightSubtext,
-                          size: 32,
-                        ),
+            SizedBox(
+              width: 100,
+              height: 90,
+              child: article.imageUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: article.imageUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 200,
+                      placeholder: (_, __) => Container(
+                        color: isDarkMode ? ThemeService.bgBorder : ThemeService.lightCardAlt,
                       ),
-              ),
+                      errorWidget: (_, _, _) => Container(
+                        color: isDarkMode ? ThemeService.bgBorder : ThemeService.lightCardAlt,
+                        child: Icon(Icons.article_rounded, size: 28, color: isDarkMode ? Colors.white24 : ThemeService.lightBorder),
+                      ),
+                    )
+                  : Container(
+                      color: isDarkMode ? ThemeService.bgBorder : ThemeService.lightCardAlt,
+                      child: Icon(Icons.article_rounded, size: 28, color: isDarkMode ? Colors.white24 : ThemeService.lightBorder),
+                    ),
             ),
-            // Content
+            // Text
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (article.source.isNotEmpty)
-                      Text(
-                        LanguageService.translitName(article.source),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: ThemeService.accent,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
                     Text(
                       LanguageService.translitName(article.title),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isDarkMode
-                            ? Colors.white
-                            : ThemeService.lightText,
+                        color: isDarkMode ? Colors.white : ThemeService.lightText,
+                        height: 1.3,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      _formatDate(article.pubDate),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkMode
-                            ? const Color(0xFF717171)
-                            : ThemeService.lightSubtext,
-                      ),
+                    Row(
+                      children: [
+                        if (article.source.isNotEmpty) ...[
+                          Flexible(
+                            child: Text(
+                              LanguageService.translitName(article.source),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ThemeService.accent),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text('  ·  ', style: TextStyle(fontSize: 11, color: isDarkMode ? Colors.white30 : ThemeService.lightBorder)),
+                        ],
+                        Text(
+                          _formatDate(article.pubDate),
+                          style: TextStyle(fontSize: 11, color: isDarkMode ? Colors.white38 : ThemeService.lightSubtext),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: isDarkMode
-                    ? Colors.white38
-                    : ThemeService.lightSubtext,
               ),
             ),
           ],
@@ -1365,4 +1234,5 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
 }

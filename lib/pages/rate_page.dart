@@ -13,12 +13,20 @@ import '../utils/widgets/placeholder_avatar.dart';
 import '../widgets/rating_form_widget.dart';
 
 class RatePage extends StatefulWidget {
+  // ignore: library_private_types_in_public_api
+  static final GlobalKey<_RatePageState> globalKey = GlobalKey<_RatePageState>();
+
   final bool isVerified;
+  final VoidCallback? onNavigateToSearch;
 
   const RatePage({
     super.key,
     required this.isVerified,
+    this.onNavigateToSearch,
   });
+
+  /// Clears the static in-memory cache so the next build re-fetches.
+  static void clearCache() => _RatePageState.clearCache();
 
   @override
   State<RatePage> createState() => _RatePageState();
@@ -37,6 +45,14 @@ class _RatePageState extends State<RatePage> {
   static void clearCache() {
     _cachedRatings = null;
     _cachedIsAuthenticated = null;
+  }
+
+  /// Called by MainScreen when the Rate tab becomes active.
+  /// Re-fetches only if the cache was invalidated.
+  void refreshIfNeeded() {
+    if (_cachedRatings == null) {
+      _checkAuthAndLoadRatings();
+    }
   }
 
   List<Rating> _userRatings = [];
@@ -521,42 +537,192 @@ class _RatePageState extends State<RatePage> {
   }
 
   // ─── Empty/auth states ──────────────────────────────────────────
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-    required String subtitle,
+  Widget _buildNoRatingsState({
     required Color textColor,
     required Color subtextColor,
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 56,
-              color: subtextColor.withValues(alpha: 0.3),
+            // Decorative illustration
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: ThemeService.accent.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Background ring
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: ThemeService.accent.withValues(alpha: 0.15),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  // Star icons arrangement
+                  Icon(
+                    Icons.star_rounded,
+                    size: 40,
+                    color: ThemeService.accent.withValues(alpha: 0.7),
+                  ),
+                  Positioned(
+                    top: 22,
+                    right: 22,
+                    child: Icon(
+                      Icons.star_rounded,
+                      size: 18,
+                      color: ThemeService.accent.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 26,
+                    left: 20,
+                    child: Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: ThemeService.accent.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             Text(
-              title,
+              LanguageService.tr('rate_empty_title'),
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
                 color: textColor,
                 letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                LanguageService.tr('rate_empty_subtitle'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: subtextColor,
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            // Search & Rate button
+            SizedBox(
+              width: double.infinity,
+              child: Material(
+                color: ThemeService.accent,
+                borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                  onTap: widget.onNavigateToSearch,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.search_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          LanguageService.tr('search_and_rate'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            // Subtle hint
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 14,
+                  color: subtextColor.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  LanguageService.tr('rate_empty_hint'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subtextColor.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignInState({
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: subtextColor.withValues(alpha: 0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person_outline_rounded,
+                size: 44,
+                color: subtextColor.withValues(alpha: 0.4),
+              ),
+            ),
+            const SizedBox(height: 24),
             Text(
-              subtitle,
+              LanguageService.tr('sign_in_required'),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              LanguageService.tr('sign_in_subtitle'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
                 color: subtextColor,
-                height: 1.4,
+                height: 1.5,
               ),
             ),
           ],
@@ -575,95 +741,91 @@ class _RatePageState extends State<RatePage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  color: ThemeService.accent,
-                  strokeWidth: 2.5,
-                ),
-              )
-            : !_isAuthenticated
-                ? _buildEmptyState(
-                    icon: Icons.person_outline_rounded,
-                    title: LanguageService.tr('sign_in_required'),
-                    subtitle: LanguageService.tr('sign_in_subtitle'),
-                    textColor: textColor,
-                    subtextColor: subtextColor,
-                  )
-                : _userRatings.isEmpty
-                    ? _buildEmptyState(
-                        icon: Icons.star_outline_rounded,
-                        title: LanguageService.tr('no_ratings'),
-                        subtitle: LanguageService.tr('no_ratings_subtitle'),
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                      )
-                    : Column(
-                        children: [
-                          // ── Header ──
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        LanguageService.tr('my_ratings'),
-                                        style: TextStyle(
-                                          color: textColor,
-                                          fontSize: ThemeService.titleSize,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.5,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${_userRatings.length} ${_userRatings.length == 1 ? LanguageService.tr('rating') : LanguageService.tr('ratings')}',
-                                        style: TextStyle(
-                                          color: subtextColor,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (widget.isVerified)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.verified_rounded,
-                                          color: Color(0xFF4CAF50),
-                                          size: 14,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          LanguageService.tr('verified'),
-                                          style: const TextStyle(
-                                            color: Color(0xFF4CAF50),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
+        child: Column(
+          children: [
+            // ── Header (always visible) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          LanguageService.tr('my_ratings'),
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: ThemeService.titleSize,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        if (!_isLoading && _isAuthenticated && _userRatings.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_userRatings.length} ${_userRatings.length == 1 ? LanguageService.tr('rating') : LanguageService.tr('ratings')}',
+                            style: TextStyle(
+                              color: subtextColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (!_isLoading && _isAuthenticated && widget.isVerified)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: Color(0xFF4CAF50),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            LanguageService.tr('verified'),
+                            style: const TextStyle(
+                              color: Color(0xFF4CAF50),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
 
-                          // ── Ratings list ──
-                          Expanded(
-                            child: RefreshIndicator(
+            // ── Body ──
+            Expanded(
+              child: _isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        color: ThemeService.accent,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : !_isAuthenticated
+                      ? _buildSignInState(
+                          textColor: textColor,
+                          subtextColor: subtextColor,
+                        )
+                      : _userRatings.isEmpty
+                          ? _buildNoRatingsState(
+                              textColor: textColor,
+                              subtextColor: subtextColor,
+                            )
+                          : RefreshIndicator(
                               color: ThemeService.accent,
                               onRefresh: _refreshRatings,
                               child: ListView.builder(
@@ -676,9 +838,9 @@ class _RatePageState extends State<RatePage> {
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+            ),
+          ],
+        ),
       ),
     );
   }

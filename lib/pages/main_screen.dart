@@ -62,6 +62,10 @@ class _MainScreenState extends State<MainScreen> {
       _visited[index] = true;
       _currentIndex = index;
     });
+    // Re-fetch Rate tab data if its cache was invalidated
+    if (index == 2) {
+      RatePage.globalKey.currentState?.refreshIfNeeded();
+    }
   }
 
   void _updateSystemUI(bool isDarkMode) {
@@ -85,9 +89,9 @@ class _MainScreenState extends State<MainScreen> {
       // 1 – Search
       if (_visited[1]) SearchPage(key: SearchPage.globalKey) else const SizedBox.shrink(),
       // 2 – Rate
-      if (_visited[2]) RatePage(key: ValueKey('rate_${LanguageService.languageCode}'), isVerified: widget.isVerified) else const SizedBox.shrink(),
+      if (_visited[2]) RatePage(key: RatePage.globalKey, isVerified: widget.isVerified, onNavigateToSearch: () => _switchToTab(1)) else const SizedBox.shrink(),
       // 3 – News
-      if (_visited[3]) const NewsPage() else const SizedBox.shrink(),
+      if (_visited[3]) NewsPage(key: NewsPage.globalKey) else const SizedBox.shrink(),
       // 4 – Profile
       if (_visited[4])
         ProfilePage(

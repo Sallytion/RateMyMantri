@@ -15,7 +15,6 @@ import '../services/constituency_service.dart';
 import '../services/constituency_notifier.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
-import '../config/api_config.dart';
 import '../models/constituency.dart';
 import '../widgets/language_sheet.dart';
 
@@ -62,7 +61,6 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadCurrentConstituency();
-    // Listen for constituency changes made on the Home page
     ConstituencyNotifier.instance.notifier.addListener(_onConstituencyNotified);
   }
 
@@ -106,7 +104,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         _currentConstituency = result;
       });
-      // Notify HomePage (and any other listeners) of the change
       ConstituencyNotifier.instance.set(result);
     }
   }
@@ -269,6 +266,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // ─── NEW LAYOUT ──────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>();
@@ -277,641 +276,125 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text(
-                  LanguageService.tr('profile'),
-                  style: TextStyle(
-                    fontSize: ThemeService.titleSize,
-                    fontWeight: FontWeight.w800,
-                    color: isDarkMode ? Colors.white : ThemeService.lightText,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-              // Header - Identity & Tenure
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
-                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
-                    border: isDarkMode
-                        ? null
-                        : Border.all(color: ThemeService.lightBorder, width: 1),
-                    boxShadow: isDarkMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                  ),
-                  child: Column(
-                    children: [
-                    Stack(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? ThemeService.accent.withValues(alpha: 0.5)
-                                  : ThemeService.lightBorder,
-                              width: 3,
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: widget.photoUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: widget.photoUrl!,
-                                    fit: BoxFit.cover,
-                                    width: 100,
-                                    height: 100,
-                                    errorWidget: (_, _, _) => Container(
-                                      color: ThemeService.accent.withValues(alpha: 0.1),
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 50,
-                                        color: ThemeService.accent,
-                                      ),
-                                    ),
-                                  )
-                                : Container(
-                                    color: ThemeService.accent.withValues(alpha: 0.1),
-                                    child: Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: ThemeService.accent,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: ThemeService.accent,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      LanguageService.translitName(widget.userName),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Verification Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: widget.isVerified
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(ThemeService.chipRadius),
-                        border: Border.all(
-                          color: widget.isVerified
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            widget.isVerified
-                                ? Icons.verified_user
-                                : Icons.info_outline,
-                            size: 16,
-                            color: widget.isVerified
-                                ? Colors.green
-                                : Colors.orange,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.isVerified
-                                ? LanguageService.tr('verified_user')
-                                : LanguageService.tr('unverified_user'),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: widget.isVerified
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // My Contributions
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
-                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
-                    border: isDarkMode
-                        ? null
-                        : Border.all(color: ThemeService.lightBorder, width: 1),
-                    boxShadow: isDarkMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
-                        child: Text(
-                          LanguageService.tr('my_activity'),
-                          style: TextStyle(
-                            fontSize: ThemeService.sectionSize,
-                            fontWeight: FontWeight.w600,
-                            color: _primaryText,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildListItem(
-                        icon: Icons.star,
-                        iconColor: const Color(0xFFFFC107),
-                        title: LanguageService.tr('my_ratings_reviews'),
-                        subtitle: LanguageService.tr('ratings_count'),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RatePage(
-                                isVerified: widget.isVerified,
-                              ),
-                            ),
-                          );
-                        },
-                        showArrow: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Political Context
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
-                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
-                    border: isDarkMode
-                        ? null
-                        : Border.all(color: ThemeService.lightBorder, width: 1),
-                    boxShadow: isDarkMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
-                        child: Text(
-                          LanguageService.tr('my_location'),
-                          style: TextStyle(
-                            fontSize: ThemeService.sectionSize,
-                            fontWeight: FontWeight.w600,
-                            color: _primaryText,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildConstituencyItem(
-                        icon: Icons.location_on,
-                        iconColor: ThemeService.accent,
-                        title: LanguageService.tr('constituency_label'),
-                        subtitle: _isLoadingConstituency
-                            ? LanguageService.tr('loading')
-                            : _currentConstituency?.name ?? LanguageService.tr('not_set'),
-                        onTap: _navigateToConstituencySearch,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // General Settings
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
-                    borderRadius: BorderRadius.circular(ThemeService.cardRadius),
-                    border: isDarkMode
-                        ? null
-                        : Border.all(color: ThemeService.lightBorder, width: 1),
-                    boxShadow: isDarkMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
-                        child: Text(
-                          LanguageService.tr('settings_support'),
-                          style: TextStyle(
-                            fontSize: ThemeService.sectionSize,
-                            fontWeight: FontWeight.w600,
-                            color: _primaryText,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Add Verify Account option for unverified users
-                      if (!widget.isVerified) ...[
-                        _buildListItem(
-                          icon: Icons.verified_user,
-                          iconColor: Colors.green,
-                          title: LanguageService.tr('verify_account'),
-                          subtitle: LanguageService.tr('verify_subtitle'),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AadharVerificationPage(
-                                  userEmail: widget.userEmail ?? '',
-                                  userName: widget.userName,
-                                  userId: widget.userId ?? '',
-                                  photoUrl: widget.photoUrl,
-                                ),
-                              ),
-                            );
-                          },
-                          showArrow: true,
-                        ),
-                        Divider(height: 1, indent: 56, color: _dividerColor),
-                      ],
-                      _buildListItem(
-                        icon: Icons.palette_outlined,
-                        iconColor: ThemeService.accentColors[context.read<ThemeProvider>().accentColorIndex],
-                        title: LanguageService.tr('customization'),
-                        subtitle: LanguageService.tr('theme_accent_dark'),
-                        onTap: _showCustomizationSheet,
-                        showArrow: true,
-                      ),
-                      Divider(height: 1, indent: 56, color: _dividerColor),
-                      _buildListItem(
-                        icon: Icons.language,
-                        iconColor: const Color(0xFF9C27B0),
-                        title: LanguageService.tr('language'),
-                        subtitle: LanguageService.currentLanguageName,
-                        onTap: _showLanguageSheet,
-                        showArrow: true,
-                      ),
-                      Divider(height: 1, indent: 56, color: _dividerColor),
-                      _buildListItem(
-                        icon: Icons.bookmark_outline,
-                        iconColor: const Color(0xFF00BCD4),
-                        title: LanguageService.tr('saved_articles'),
-                        subtitle: LanguageService.tr('view_bookmarks'),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SavedArticlesPage(
-                                isDarkMode: isDarkMode,
-                              ),
-                            ),
-                          );
-                        },
-                        showArrow: true,
-                      ),
-                      Divider(height: 1, indent: 56, color: _dividerColor),
-                      _buildListItem(
-                        icon: Icons.support_agent,
-                        iconColor: const Color(0xFF4CAF50),
-                        title: LanguageService.tr('support'),
-                        subtitle: LanguageService.tr('contact_dev'),
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            barrierColor: Colors.black.withValues(alpha: 0.6),
-                            builder: (context) => Dialog(
-                              backgroundColor: Colors.transparent,
-                              elevation: 0,
-                              child: Container(
-                                constraints: const BoxConstraints(maxWidth: 400),
-                                decoration: BoxDecoration(
-                                  color: isDarkMode ? _cardBackground : ThemeService.lightCard,
-                                  borderRadius: BorderRadius.circular(ThemeService.cardRadius),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 32,
-                                      offset: const Offset(0, 16),
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(28),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Header with Icon
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            child: const Icon(
-                                              Icons.support_agent_rounded,
-                                              color: Color(0xFF4CAF50),
-                                              size: 28,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  LanguageService.tr('contact_support'),
-                                                  style: TextStyle(
-                                                    color: _primaryText,
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: -0.5,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  LanguageService.tr('we_help'),
-                                                  style: TextStyle(
-                                                    color: _secondaryText,
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 24),
-                                      // Email Container
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: isDarkMode
-                                              ? ThemeService.bgElev
-                                              : ThemeService.lightCardAlt,
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: isDarkMode
-                                                ? ThemeService.bgBorder
-                                                : ThemeService.lightBorder,
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(ThemeService.chipRadius),
-                                              ),
-                                              child: const Icon(
-                                                Icons.email_rounded,
-                                                color: Color(0xFF4CAF50),
-                                                size: 20,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    LanguageService.tr('email_us_at'),
-                                                    style: TextStyle(
-                                                      color: _secondaryText,
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.w600,
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    'sallytionmakes@gmail.com',
-                                                    style: TextStyle(
-                                                      color: _primaryText,
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      // Action Buttons
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                                backgroundColor: isDarkMode
-                                                    ? ThemeService.bgElev
-                                                    : ThemeService.lightCardAlt,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                LanguageService.tr('close'),
-                                                style: TextStyle(
-                                                  color: _secondaryText,
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: ElevatedButton(
-                                              onPressed: () async {
-                                                final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                                final isDark = isDarkMode;
-                                                Navigator.pop(context);
-                                                final Uri emailUri = Uri(
-                                                  scheme: 'mailto',
-                                                  path: 'sallytionmakes@gmail.com',
-                                                  query: 'subject=Rate My Mantri - Support Request',
-                                                );
-
-                                                try {
-                                                  await launchUrl(
-                                                    emailUri,
-                                                    mode: LaunchMode.externalApplication,
-                                                  );
-                                                } catch (e) {
-                                                  if (mounted) {
-                                                    scaffoldMessenger.showSnackBar(
-                                                      SnackBar(
-                                                        content: Text('${LanguageService.tr('please_email_at')}: sallytionmakes@gmail.com'),
-                                                        backgroundColor: isDark
-                                                            ? ThemeService.bgElev
-                                                            : const Color(0xFF323232),
-                                                        duration: const Duration(seconds: 4),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                                backgroundColor: const Color(0xFF4CAF50),
-                                                foregroundColor: Colors.white,
-                                                elevation: 0,
-                                                shadowColor: Colors.transparent,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                LanguageService.tr('send_email'),
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: 0.3,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                        showArrow: true,
-                      ),
-                      Divider(height: 1, indent: 56, color: _dividerColor),
-                      _buildListItem(
-                        icon: Icons.privacy_tip_outlined,
-                        iconColor: const Color(0xFF795548),
-                        title: LanguageService.tr('legal_privacy'),
-                        subtitle: LanguageService.tr('terms_data'),
-                        onTap: () async {
-                          final uri = Uri.parse('${ApiConfig.baseUrl}/privacypolicy');
-                          if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(LanguageService.tr('could_not_open_privacy'))),
-                              );
-                            }
-                          }
-                        },
-                        showArrow: true,
-                      ),
-                      Divider(height: 1, indent: 56, color: _dividerColor),
-                      _buildListItem(
-                        icon: Icons.info_outline,
-                        iconColor: const Color(0xFF607D8B),
-                        title: LanguageService.tr('about_app_disclaimer'),
-                        subtitle: LanguageService.tr('data_sources_and_disclaimer'),
-                        onTap: () => _showDisclaimerDialog(context),
-                        showArrow: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 24),
 
-              // Logout Button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      // Show confirmation dialog
-                      final shouldLogout = await showDialog<bool>(
+              // ── Profile header ────────────────────────────
+              _buildProfileHeader(isDarkMode),
+
+              const SizedBox(height: 16),
+
+              // ── Account section ───────────────────────────
+              _buildSectionCard(
+                title: LanguageService.tr('my_activity'),
+                items: [
+                  _SettingItem(
+                    icon: Icons.location_on_rounded,
+                    iconBgColor: isDarkMode
+                        ? ThemeService.accent.withValues(alpha: 0.15)
+                        : ThemeService.pastelBlue,
+                    iconColor: ThemeService.accent,
+                    title: LanguageService.tr('constituency_label'),
+                    onTap: _navigateToConstituencySearch,
+                  ),
+                  if (!widget.isVerified)
+                    _SettingItem(
+                      icon: Icons.verified_user_rounded,
+                      iconBgColor: isDarkMode
+                          ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
+                          : ThemeService.pastelGreen,
+                      iconColor: const Color(0xFF4CAF50),
+                      title: LanguageService.tr('verify_account'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AadharVerificationPage(
+                              userEmail: widget.userEmail ?? '',
+                              userName: widget.userName,
+                              userId: widget.userId ?? '',
+                              photoUrl: widget.photoUrl,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  _SettingItem(
+                    icon: Icons.bookmark_rounded,
+                    iconBgColor: isDarkMode
+                        ? const Color(0xFF00BCD4).withValues(alpha: 0.15)
+                        : ThemeService.pastelMint,
+                    iconColor: const Color(0xFF00BCD4),
+                    title: LanguageService.tr('saved_articles'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SavedArticlesPage(
+                            isDarkMode: isDarkMode,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+                isDarkMode: isDarkMode,
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Customization section ───────────────────────
+              _buildSectionCard(
+                title: LanguageService.tr('customization'),
+                items: [
+                  _SettingItem(
+                    icon: Icons.palette_rounded,
+                    iconBgColor: isDarkMode
+                        ? ThemeService.accentColors[context.read<ThemeProvider>().accentColorIndex].withValues(alpha: 0.15)
+                        : ThemeService.pastelLavender,
+                    iconColor: ThemeService.accentColors[context.read<ThemeProvider>().accentColorIndex],
+                    title: LanguageService.tr('customization'),
+                    onTap: _showCustomizationSheet,
+                  ),
+                  _SettingItem(
+                    icon: Icons.language_rounded,
+                    iconBgColor: isDarkMode
+                        ? const Color(0xFF9C27B0).withValues(alpha: 0.15)
+                        : ThemeService.pastelPeach,
+                    iconColor: const Color(0xFF9C27B0),
+                    title: LanguageService.tr('language'),
+                    onTap: _showLanguageSheet,
+                  ),
+                ],
+                isDarkMode: isDarkMode,
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Help & Info section ─────────────────────────
+              _buildSectionCard(
+                title: LanguageService.tr('support'),
+                items: [
+                  _SettingItem(
+                    icon: Icons.info_outline_rounded,
+                    iconBgColor: isDarkMode
+                        ? const Color(0xFF607D8B).withValues(alpha: 0.15)
+                        : ThemeService.pastelBlue,
+                    iconColor: const Color(0xFF607D8B),
+                    title: LanguageService.tr('about_app_disclaimer'),
+                    onTap: () => _showDisclaimerDialog(context),
+                  ),
+                  _SettingItem(
+                    icon: Icons.support_agent_rounded,
+                    iconBgColor: isDarkMode
+                        ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
+                        : ThemeService.pastelGreen,
+                    iconColor: const Color(0xFF4CAF50),
+                    title: LanguageService.tr('support'),
+                    onTap: () {
+                      showDialog(
                         context: context,
                         barrierColor: Colors.black.withValues(alpha: 0.6),
                         builder: (context) => Dialog(
@@ -936,18 +419,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Header with Icon
                                   Row(
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: ThemeService.accent.withValues(alpha: 0.15),
+                                          color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
                                           borderRadius: BorderRadius.circular(16),
                                         ),
-                                        child: Icon(
-                                          Icons.logout_rounded,
-                                          color: ThemeService.accent,
+                                        child: const Icon(
+                                          Icons.support_agent_rounded,
+                                          color: Color(0xFF4CAF50),
                                           size: 28,
                                         ),
                                       ),
@@ -957,7 +439,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              LanguageService.tr('log_out'),
+                                              LanguageService.tr('contact_support'),
                                               style: TextStyle(
                                                 color: _primaryText,
                                                 fontSize: 22,
@@ -967,7 +449,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              LanguageService.tr('come_back_soon'),
+                                              LanguageService.tr('we_help'),
                                               style: TextStyle(
                                                 color: _secondaryText,
                                                 fontSize: 13,
@@ -979,22 +461,70 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    LanguageService.tr('log_out_confirm'),
-                                    style: TextStyle(
-                                      color: _secondaryText,
-                                      fontSize: 15,
-                                      height: 1.5,
+                                  const SizedBox(height: 24),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode
+                                          ? ThemeService.bgElev
+                                          : ThemeService.lightCardAlt,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? ThemeService.bgBorder
+                                            : ThemeService.lightBorder,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(ThemeService.chipRadius),
+                                          ),
+                                          child: const Icon(
+                                            Icons.email_rounded,
+                                            color: Color(0xFF4CAF50),
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                LanguageService.tr('email_us_at'),
+                                                style: TextStyle(
+                                                  color: _secondaryText,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'sallytionmakes@gmail.com',
+                                                style: TextStyle(
+                                                  color: _primaryText,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(height: 24),
-                                  // Action Buttons
                                   Row(
                                     children: [
                                       Expanded(
                                         child: TextButton(
-                                          onPressed: () => Navigator.pop(context, false),
+                                          onPressed: () => Navigator.pop(context),
                                           style: TextButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(vertical: 14),
                                             backgroundColor: isDarkMode
@@ -1005,9 +535,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ),
                                           ),
                                           child: Text(
-                                            LanguageService.tr('cancel'),
+                                            LanguageService.tr('close'),
                                             style: TextStyle(
-                                              color: _primaryText,
+                                              color: _secondaryText,
                                               fontSize: 15,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -1017,10 +547,37 @@ class _ProfilePageState extends State<ProfilePage> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: ElevatedButton(
-                                          onPressed: () => Navigator.pop(context, true),
+                                          onPressed: () async {
+                                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                            final isDark = isDarkMode;
+                                            Navigator.pop(context);
+                                            final Uri emailUri = Uri(
+                                              scheme: 'mailto',
+                                              path: 'sallytionmakes@gmail.com',
+                                              query: 'subject=Rate My Mantri - Support Request',
+                                            );
+                                            try {
+                                              await launchUrl(
+                                                emailUri,
+                                                mode: LaunchMode.externalApplication,
+                                              );
+                                            } catch (e) {
+                                              if (mounted) {
+                                                scaffoldMessenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('${LanguageService.tr('please_email_at')}: sallytionmakes@gmail.com'),
+                                                    backgroundColor: isDark
+                                                        ? ThemeService.bgElev
+                                                        : const Color(0xFF323232),
+                                                    duration: const Duration(seconds: 4),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
                                           style: ElevatedButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(vertical: 14),
-                                            backgroundColor: ThemeService.accent,
+                                            backgroundColor: const Color(0xFF4CAF50),
                                             foregroundColor: Colors.white,
                                             elevation: 0,
                                             shadowColor: Colors.transparent,
@@ -1029,7 +586,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ),
                                           ),
                                           child: Text(
-                                            LanguageService.tr('log_out'),
+                                            LanguageService.tr('send_email'),
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w700,
@@ -1046,73 +603,34 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       );
-
-                      if (shouldLogout == true && mounted) {
-                        // Show loading indicator
-                        showDialog(
-                          context: navigator.context,
-                          barrierDismissible: false,
-                          builder: (context) =>
-                              const Center(child: CircularProgressIndicator()),
-                        );
-
-                        try {
-                          // Sign out and disconnect from Google (full logout)
-                          final googleSignIn = GoogleSignIn();
-                          await googleSignIn.signOut();
-                          await googleSignIn.disconnect();
-
-                          // Clear all local storage
-                          await AuthStorageService.clearAuthData();
-
-                          if (mounted) {
-                            // Close loading dialog
-                            navigator.pop();
-
-                            // Navigate to login page
-                            navigator.pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const GoogleSignInPage(),
-                              ),
-                              (route) => false,
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            // Close loading dialog
-                            navigator.pop();
-
-                            // Still navigate to login even if there's an error
-                            navigator.pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const GoogleSignInPage(),
-                              ),
-                              (route) => false,
-                            );
-                          }
-                        }
-                      }
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFD32F2F),
-                      backgroundColor: const Color(0xFFD32F2F).withValues(alpha: 0.06),
-                      side: BorderSide(
-                        color: const Color(0xFFD32F2F).withValues(alpha: 0.3),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-                      ),
-                    ),
-                    child: Text(
-                      LanguageService.tr('log_out'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
-                ),
+                  _SettingItem(
+                    icon: Icons.star_rounded,
+                    iconBgColor: isDarkMode
+                        ? const Color(0xFFFFC107).withValues(alpha: 0.15)
+                        : ThemeService.pastelYellow,
+                    iconColor: const Color(0xFFFFC107),
+                    title: LanguageService.tr('my_ratings_reviews'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RatePage(
+                            isVerified: widget.isVerified,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+                isDarkMode: isDarkMode,
               ),
+
+              const SizedBox(height: 32),
+
+              // ── Sign Out button ───────────────────────────
+              _buildSignOutButton(isDarkMode),
 
               const SizedBox(height: 32),
             ],
@@ -1122,117 +640,466 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Constituency item with pastelGreen tinted background.
-  Widget _buildConstituencyItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-        decoration: BoxDecoration(
-          color: isDarkMode
-              ? ThemeService.bgElev.withValues(alpha: 0.5)
-              : ThemeService.pastelGreen.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
+  // ─── Profile Header ─────────────────────────────────────────────
+
+  Widget _buildProfileHeader(bool isDarkMode) {
+    final constituencyName = _isLoadingConstituency
+        ? LanguageService.tr('loading')
+        : _currentConstituency?.name;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        children: [
+          Container(
+            width: 86,
+            height: 86,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: ThemeService.accent.withValues(alpha: 0.3),
+                width: 3,
               ),
-              child: Icon(icon, color: iconColor, size: 24),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: _primaryText,
+            child: ClipOval(
+              child: widget.photoUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: widget.photoUrl!,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 80,
+                      errorWidget: (_, _, _) => Container(
+                        color: ThemeService.accent.withValues(alpha: 0.1),
+                        child: Icon(
+                          Icons.person,
+                          size: 40,
+                          color: ThemeService.accent,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: ThemeService.accent.withValues(alpha: 0.1),
+                      child: Icon(
+                        Icons.person,
+                        size: 40,
+                        color: ThemeService.accent,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 13, color: _secondaryText),
-                  ),
-                ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            LanguageService.translitName(widget.userName),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: _primaryText,
+              letterSpacing: -0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          if (widget.userEmail != null && widget.userEmail!.isNotEmpty)
+            Text(
+              widget.userEmail!,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDarkMode ? const Color(0xFFB0B0B0) : ThemeService.lightSubtext,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildStatPill(
+                icon: widget.isVerified ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                label: widget.isVerified
+                    ? LanguageService.tr('verified_user')
+                    : LanguageService.tr('unverified_user'),
+                color: widget.isVerified ? const Color(0xFF4CAF50) : const Color(0xFFFF9800),
+                isDarkMode: isDarkMode,
+              ),
+              if (constituencyName != null) ...[
+                const SizedBox(width: 8),
+                _buildStatPill(
+                  icon: Icons.location_on_rounded,
+                  label: constituencyName,
+                  color: ThemeService.accent,
+                  isDarkMode: isDarkMode,
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Section Card ───────────────────────────────────────────────
+
+  Widget _buildSectionCard({
+    required String title,
+    required List<_SettingItem> items,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? ThemeService.bgElev : ThemeService.lightCard,
+        borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+        border: isDarkMode
+            ? null
+            : Border.all(color: ThemeService.lightBorder, width: 1),
+        boxShadow: isDarkMode
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: _secondaryText,
+                letterSpacing: 0.2,
               ),
             ),
-            Icon(Icons.chevron_right, color: _secondaryText),
+          ),
+          for (int i = 0; i < items.length; i++) ...[
+            _buildSettingRow(items[i], isDarkMode),
+            if (i < items.length - 1)
+              Padding(
+                padding: const EdgeInsets.only(left: 68),
+                child: Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  color: _dividerColor,
+                ),
+              ),
           ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingRow(_SettingItem item, bool isDarkMode) {
+    return InkWell(
+      onTap: item.onTap,
+      borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+      child: SizedBox(
+        height: 52,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: item.iconBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  item.icon,
+                  size: 17,
+                  color: item.iconColor,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: _primaryText,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: _secondaryText.withValues(alpha: 0.6),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildListItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool showArrow = false,
-    Widget? trailing,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: _primaryText,
+  // ─── Sign Out Button ────────────────────────────────────────────
+
+  Widget _buildSignOutButton(bool isDarkMode) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: () async {
+          final navigator = Navigator.of(context);
+          final shouldLogout = await showDialog<bool>(
+            context: context,
+            barrierColor: Colors.black.withValues(alpha: 0.6),
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                decoration: BoxDecoration(
+                  color: isDarkMode ? _cardBackground : ThemeService.lightCard,
+                  borderRadius: BorderRadius.circular(ThemeService.cardRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 32,
+                      offset: const Offset(0, 16),
                     ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: ThemeService.accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              Icons.logout_rounded,
+                              color: ThemeService.accent,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  LanguageService.tr('log_out'),
+                                  style: TextStyle(
+                                    color: _primaryText,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  LanguageService.tr('come_back_soon'),
+                                  style: TextStyle(
+                                    color: _secondaryText,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        LanguageService.tr('log_out_confirm'),
+                        style: TextStyle(
+                          color: _secondaryText,
+                          fontSize: 15,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                backgroundColor: isDarkMode
+                                    ? ThemeService.bgElev
+                                    : ThemeService.lightCardAlt,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                                ),
+                              ),
+                              child: Text(
+                                LanguageService.tr('cancel'),
+                                style: TextStyle(
+                                  color: _primaryText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                backgroundColor: ThemeService.accent,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+                                ),
+                              ),
+                              child: Text(
+                                LanguageService.tr('log_out'),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 13, color: _secondaryText),
-                  ),
-                ],
+                ),
               ),
             ),
-            if (trailing != null)
-              trailing
-            else if (showArrow)
-              Icon(Icons.chevron_right, color: _secondaryText),
+          );
+
+          if (shouldLogout == true && mounted) {
+            showDialog(
+              context: navigator.context,
+              barrierDismissible: false,
+              builder: (context) =>
+                  const Center(child: CircularProgressIndicator()),
+            );
+
+            try {
+              final googleSignIn = GoogleSignIn();
+              await googleSignIn.signOut();
+              await googleSignIn.disconnect();
+              await AuthStorageService.clearAuthData();
+
+              if (mounted) {
+                navigator.pop();
+                navigator.pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const GoogleSignInPage(),
+                  ),
+                  (route) => false,
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                navigator.pop();
+                navigator.pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const GoogleSignInPage(),
+                  ),
+                  (route) => false,
+                );
+              }
+            }
+          }
+        },
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFD32F2F),
+          backgroundColor: Colors.transparent,
+          side: const BorderSide(
+            color: Color(0xFFD32F2F),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ThemeService.smallRadius),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout_rounded, size: 18, color: Color(0xFFD32F2F)),
+            const SizedBox(width: 8),
+            Text(
+              LanguageService.tr('log_out'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFD32F2F),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+// ─── Helper data class for setting items ──────────────────────────
+
+class _SettingItem {
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
+  final String title;
+  final VoidCallback onTap;
+
+  const _SettingItem({
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
+    required this.title,
+    required this.onTap,
+  });
+}
+
 // --- Customization Bottom Sheet ---
 
 class _CustomizationSheet extends StatefulWidget {
@@ -1288,7 +1155,6 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
           Center(
             child: Container(
               width: 36,
@@ -1310,8 +1176,6 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
             ),
           ),
           const SizedBox(height: 24),
-
-          // -- Accent Color --
           Text(
             LanguageService.tr('accent_color'),
             style: TextStyle(
@@ -1376,10 +1240,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
               }),
             ),
           ),
-
           const SizedBox(height: 28),
-
-          // -- Dark Mode --
           Text(
             LanguageService.tr('appearance'),
             style: TextStyle(
@@ -1418,7 +1279,7 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
             subtextColor: subtextColor,
           ),
           _buildModeOption(
-            label: LanguageService.tr('amoled') + ' ' + LanguageService.tr('dark'),
+            label: '${LanguageService.tr('amoled')} ${LanguageService.tr('dark')}',
             subtitle: LanguageService.tr('pure_black_bg'),
             icon: Icons.brightness_2_outlined,
             option: DarkModeOption.amoled,
