@@ -208,13 +208,13 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
 
             const SizedBox(height: 16),
 
-            // Verification Stats
+            // Privacy breakdown
             Row(
               children: [
                 Expanded(
                   child: _buildStatItem(
-                    LanguageService.tr('verified'),
-                    '${_statistics!.verifiedNamedCount + _statistics!.verifiedAnonymousCount}',
+                    LanguageService.tr('ratings'),
+                    '${_statistics!.totalRatings}',
                   ),
                 ),
                 Expanded(
@@ -225,8 +225,8 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    LanguageService.tr('unverified'),
-                    '${_statistics!.unverifiedCount}',
+                    'Named',
+                    '${_statistics!.totalRatings - _statistics!.verifiedAnonymousCount}',
                   ),
                 ),
               ],
@@ -320,8 +320,8 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: rating.isVerified
-                                  ? Colors.green.withValues(alpha: 0.2)
+                              color: rating.isAnonymous
+                                  ? ThemeService.accent.withValues(alpha: 0.2)
                                   : Colors.grey.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                             ),
@@ -329,17 +329,17 @@ class _RatingsDisplayWidgetState extends State<RatingsDisplayWidget> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  rating.isVerified
-                                      ? Icons.verified
-                                      : Icons.info_outline,
+                                  rating.isAnonymous
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.person_outline,
                                   size: 10,
-                                  color: rating.isVerified
-                                      ? Colors.green
+                                  color: rating.isAnonymous
+                                      ? ThemeService.accent
                                       : Colors.grey,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  rating.isVerified ? LanguageService.tr('verified') : LanguageService.tr('unverified'),
+                                  rating.isAnonymous ? LanguageService.tr('anonymous') : 'Named',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: widget.isDarkMode

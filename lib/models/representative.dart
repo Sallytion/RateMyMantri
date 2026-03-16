@@ -42,8 +42,10 @@ class Representative {
   // Computed property for backward compatibility
   String get personId => id.toString();
   String get office => officeType;
-  int? get netWorth =>
-      (assets != null && liabilities != null) ? (assets! - liabilities!) : null;
+  int? get netWorth {
+    if (assets == null && liabilities == null) return null;
+    return (assets ?? 0) - (liabilities ?? 0);
+  }
 
   factory Representative.fromJson(Map<String, dynamic> json) {
     // Helper function to safely parse int from dynamic value

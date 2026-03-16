@@ -9,7 +9,6 @@ class RatingFormWidget extends StatefulWidget {
   final String representativeName;
   final String officeType;
   final bool isDarkMode;
-  final bool isVerified;
   final Rating? existingRating;
   final VoidCallback? onRatingSubmitted;
 
@@ -19,7 +18,6 @@ class RatingFormWidget extends StatefulWidget {
     required this.representativeName,
     required this.officeType,
     required this.isDarkMode,
-    required this.isVerified,
     this.existingRating,
     this.onRatingSubmitted,
   });
@@ -333,96 +331,60 @@ class _RatingFormWidgetState extends State<RatingFormWidget> {
 
               const SizedBox(height: 16),
 
-              // Anonymous Toggle (Only for verified users)
-              if (widget.isVerified) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: widget.isDarkMode
-                        ? ThemeService.bgElev
-                        : ThemeService.lightCardAlt,
-                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.privacy_tip_outlined,
-                        color: widget.isDarkMode
-                            ? Colors.white70
-                            : ThemeService.lightSubtext,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              LanguageService.tr('post_anonymously'),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: widget.isDarkMode
-                                    ? Colors.white
-                                    : ThemeService.lightText,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              LanguageService.tr('name_not_visible'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: widget.isDarkMode
-                                    ? Colors.white60
-                                    : ThemeService.lightSubtext,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: _anonymous,
-                        onChanged: (value) =>
-                            setState(() => _anonymous = value),
-                        activeTrackColor: Colors.green,
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: widget.isDarkMode
+                      ? ThemeService.bgElev
+                      : ThemeService.lightCardAlt,
+                  borderRadius: BorderRadius.circular(ThemeService.smallRadius),
                 ),
-                const SizedBox(height: 16),
-              ],
-
-              // Verification notice for unverified users
-              if (!widget.isVerified) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(ThemeService.smallRadius),
-                    border: Border.all(
-                      color: Colors.orange.withValues(alpha: 0.3),
-                      width: 1,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.privacy_tip_outlined,
+                      color: widget.isDarkMode
+                          ? Colors.white70
+                          : ThemeService.lightSubtext,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          LanguageService.tr('verify_aadhaar_notice'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: widget.isDarkMode
-                                ? Colors.white70
-                                : ThemeService.lightSubtext,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            LanguageService.tr('post_anonymously'),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: widget.isDarkMode
+                                  ? Colors.white
+                                  : ThemeService.lightText,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 2),
+                          Text(
+                            LanguageService.tr('name_not_visible'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: widget.isDarkMode
+                                  ? Colors.white60
+                                  : ThemeService.lightSubtext,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Switch(
+                      value: _anonymous,
+                      onChanged: (value) =>
+                          setState(() => _anonymous = value),
+                      activeTrackColor: Colors.green,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
 
               // Submit Button
               SizedBox(

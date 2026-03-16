@@ -22,8 +22,10 @@ class RepresentativeDetail {
   final int bnsCasesCount;
 
   // Computed properties
-  int? get netWorth =>
-      (assets != null && liabilities != null) ? (assets! - liabilities!) : null;
+  int? get netWorth {
+    if (assets == null && liabilities == null) return null;
+    return (assets ?? 0) - (liabilities ?? 0);
+  }
   Person get person => Person(
     id: id.toString(),
     fullName: name,

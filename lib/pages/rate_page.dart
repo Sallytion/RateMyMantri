@@ -16,12 +16,10 @@ class RatePage extends StatefulWidget {
   // ignore: library_private_types_in_public_api
   static final GlobalKey<_RatePageState> globalKey = GlobalKey<_RatePageState>();
 
-  final bool isVerified;
   final VoidCallback? onNavigateToSearch;
 
   const RatePage({
     super.key,
-    required this.isVerified,
     this.onNavigateToSearch,
   });
 
@@ -240,7 +238,6 @@ class _RatePageState extends State<RatePage> {
           representativeName: rating.representativeName ?? 'Unknown',
           officeType: rating.officeType ?? 'MP',
           isDarkMode: isDarkMode,
-          isVerified: widget.isVerified,
           existingRating: rating,
           onRatingSubmitted: () {
             clearCache();
@@ -435,25 +432,23 @@ class _RatePageState extends State<RatePage> {
                   padding: const EdgeInsets.only(top: 12),
                   child: Row(
                     children: [
-                      // Status chip
+                      // Privacy chip
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: rating.isVerified
-                              ? const Color(0xFF4CAF50).withValues(alpha: 0.1)
+                          color: rating.isAnonymous
+                              ? ThemeService.accent.withValues(alpha: 0.12)
                               : subtextColor.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(ThemeService.chipRadius),
                         ),
                         child: Text(
                           rating.isAnonymous
                               ? LanguageService.tr('anonymous')
-                              : rating.isVerified
-                                  ? LanguageService.tr('verified')
-                                  : LanguageService.tr('unverified'),
+                              : 'Named',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: rating.isVerified ? const Color(0xFF4CAF50) : subtextColor,
+                            color: rating.isAnonymous ? ThemeService.accent : subtextColor,
                           ),
                         ),
                       ),
@@ -775,33 +770,6 @@ class _RatePageState extends State<RatePage> {
                       ],
                     ),
                   ),
-                  if (!_isLoading && _isAuthenticated && widget.isVerified)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.verified_rounded,
-                            color: Color(0xFF4CAF50),
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            LanguageService.tr('verified'),
-                            style: const TextStyle(
-                              color: Color(0xFF4CAF50),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),

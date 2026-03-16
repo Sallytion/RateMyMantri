@@ -1,12 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
 import 'google_sign_in_page.dart';
-import 'aadhar_verification_page.dart';
 import 'constituency_search_page.dart';
 import 'rate_page.dart';
 import 'saved_articles_page.dart';
@@ -15,12 +15,12 @@ import '../services/constituency_service.dart';
 import '../services/constituency_notifier.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../config/api_config.dart';
 import '../models/constituency.dart';
 import '../widgets/language_sheet.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userName;
-  final bool isVerified;
   final String? userEmail;
   final String? userId;
   final String? photoUrl;
@@ -28,7 +28,6 @@ class ProfilePage extends StatefulWidget {
   const ProfilePage({
     super.key,
     required this.userName,
-    required this.isVerified,
     this.userEmail,
     this.userId,
     this.photoUrl,
@@ -299,28 +298,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: LanguageService.tr('constituency_label'),
                     onTap: _navigateToConstituencySearch,
                   ),
-                  if (!widget.isVerified)
-                    _SettingItem(
-                      icon: Icons.verified_user_rounded,
-                      iconBgColor: isDarkMode
-                          ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
-                          : ThemeService.pastelGreen,
-                      iconColor: const Color(0xFF4CAF50),
-                      title: LanguageService.tr('verify_account'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AadharVerificationPage(
-                              userEmail: widget.userEmail ?? '',
-                              userName: widget.userName,
-                              userId: widget.userId ?? '',
-                              photoUrl: widget.photoUrl,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   _SettingItem(
                     icon: Icons.bookmark_rounded,
                     iconBgColor: isDarkMode
@@ -616,9 +593,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RatePage(
-                            isVerified: widget.isVerified,
-                          ),
+                          builder: (context) => const RatePage(),
                         ),
                       );
                     },
@@ -712,23 +687,13 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildStatPill(
-                icon: widget.isVerified ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                label: widget.isVerified
-                    ? LanguageService.tr('verified_user')
-                    : LanguageService.tr('unverified_user'),
-                color: widget.isVerified ? const Color(0xFF4CAF50) : const Color(0xFFFF9800),
-                isDarkMode: isDarkMode,
-              ),
-              if (constituencyName != null) ...[
-                const SizedBox(width: 8),
+              if (constituencyName != null)
                 _buildStatPill(
                   icon: Icons.location_on_rounded,
                   label: constituencyName,
                   color: ThemeService.accent,
                   isDarkMode: isDarkMode,
                 ),
-              ],
             ],
           ),
         ],
@@ -1130,12 +1095,76 @@ class _CustomizationSheet extends StatefulWidget {
 class _CustomizationSheetState extends State<_CustomizationSheet> {
   late DarkModeOption _selectedMode;
   late int _selectedColor;
+  late final TextEditingController _debugBaseUrlController;
+
+  bool _isApplyingDebugUrl = false;
+  bool _isResettingDebugUrl = false;
+  String? _debugBaseUrlError;
+
+  bool get _showDebugServerOption => kDebugMode && ApiConfig.canOverrideInDebug;
 
   @override
   void initState() {
     super.initState();
     _selectedMode = widget.darkModeOption;
     _selectedColor = widget.accentColorIndex;
+    _debugBaseUrlController = TextEditingController(text: ApiConfig.baseUrl);
+  }
+
+  @override
+  void dispose() {
+    _debugBaseUrlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _applyDebugBaseUrl() async {
+    if (_isApplyingDebugUrl) return;
+    setState(() {
+      _isApplyingDebugUrl = true;
+      _debugBaseUrlError = null;
+    });
+
+    final ok = await ApiConfig.setDebugBaseUrl(_debugBaseUrlController.text);
+    if (!mounted) return;
+
+    if (!ok) {
+      setState(() {
+        _isApplyingDebugUrl = false;
+        _debugBaseUrlError = 'Enter a valid http(s) URL';
+      });
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isApplyingDebugUrl = false;
+      _debugBaseUrlError = null;
+      _debugBaseUrlController.text = ApiConfig.baseUrl;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Debug server URL updated')),
+    );
+  }
+
+  Future<void> _resetDebugBaseUrl() async {
+    if (_isResettingDebugUrl) return;
+    setState(() {
+      _isResettingDebugUrl = true;
+      _debugBaseUrlError = null;
+    });
+
+    await ApiConfig.resetDebugBaseUrl();
+    if (!mounted) return;
+
+    setState(() {
+      _isResettingDebugUrl = false;
+      _debugBaseUrlController.text = ApiConfig.baseUrl;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Debug server URL reset to default')),
+    );
   }
 
   @override
@@ -1150,11 +1179,12 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
         color: bgColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(ThemeService.cardRadius)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 32 + MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Center(
             child: Container(
               width: 36,
@@ -1287,7 +1317,103 @@ class _CustomizationSheetState extends State<_CustomizationSheet> {
             textColor: textColor,
             subtextColor: subtextColor,
           ),
-        ],
+          if (_showDebugServerOption) ...[
+            const SizedBox(height: 28),
+            Text(
+              'Debug Server',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: subtextColor,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Only available in debug builds',
+              style: TextStyle(
+                fontSize: 12,
+                color: subtextColor.withValues(alpha: 0.9),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _debugBaseUrlController,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: TextStyle(color: textColor, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'https://your-server.com',
+                hintStyle: TextStyle(color: subtextColor.withValues(alpha: 0.6)),
+                errorText: _debugBaseUrlError,
+                filled: true,
+                fillColor: widget.isDarkMode ? ThemeService.bgElev : ThemeService.lightCardAlt,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: widget.isDarkMode ? ThemeService.bgBorder : ThemeService.lightBorder,
+                    width: 1,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: widget.isDarkMode ? ThemeService.bgBorder : ThemeService.lightBorder,
+                    width: 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: accent, width: 1.4),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isResettingDebugUrl ? null : _resetDebugBaseUrl,
+                    child: _isResettingDebugUrl
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Reset'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _isApplyingDebugUrl ? null : _applyDebugBaseUrl,
+                    child: _isApplyingDebugUrl
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('Apply'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Default: ${ApiConfig.defaultBaseUrl}',
+              style: TextStyle(
+                fontSize: 11,
+                color: subtextColor.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
+          ],
+        ),
       ),
     );
   }

@@ -706,20 +706,27 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Row(
                     children: [
+                      Flexible(child: Text(officeLabel, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(_safeTranslit(_formatRepName(rep.fullName)), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 8),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 120),
+                        constraints: const BoxConstraints(maxWidth: 110),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(6)),
                           child: Text(_safeTranslit(rep.party), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(child: Text(officeLabel, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(_safeTranslit(_formatRepName(rep.fullName)), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text(_formatRepLocation(rep), style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),

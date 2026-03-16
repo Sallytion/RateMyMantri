@@ -9,14 +9,12 @@ import '../services/constituency_service.dart';
 import '../services/language_service.dart';
 import '../services/prefs_service.dart';
 import '../services/theme_service.dart';
-import 'aadhar_verification_page.dart';
 
 class OnboardingPage extends StatefulWidget {
   final String userName;
   final String? userEmail;
   final String? userId;
   final String? photoUrl;
-  final bool isVerified;
 
   const OnboardingPage({
     super.key,
@@ -24,7 +22,6 @@ class OnboardingPage extends StatefulWidget {
     this.userEmail,
     this.userId,
     this.photoUrl,
-    this.isVerified = false,
   });
 
   @override
@@ -74,7 +71,7 @@ class _OnboardingPageState extends State<OnboardingPage>
   }
 
   void _nextPage() {
-    final totalPages = widget.isVerified ? 2 : 3;
+    const totalPages = 2;
 
     if (_currentPage == 0) {
       // Save language preference
@@ -176,7 +173,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Row(
-                  children: List.generate(widget.isVerified ? 2 : 3, (index) {
+                  children: List.generate(2, (index) {
                     final isActive = index <= _currentPage;
                     return Expanded(
                       child: AnimatedContainer(
@@ -207,28 +204,18 @@ class _OnboardingPageState extends State<OnboardingPage>
                       setState(() => _currentPage = page),
                   children: [
                     _buildLanguagePage(isDark),
-                    if (!widget.isVerified)
-                      AadharVerificationPage(
-                        userEmail: widget.userEmail ?? '',
-                        userName: widget.userName,
-                        userId: widget.userId ?? '',
-                        photoUrl: widget.photoUrl,
-                        isInline: true,
-                        onComplete: _nextPage,
-                      ),
                     _buildConstituencyPage(isDark),
                   ],
                 ),
               ),
 
               // Bottom button
-              if (widget.isVerified || _currentPage != 1)
-                Padding(
+              Padding(
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_currentPage == (widget.isVerified ? 1 : 2))
+                      if (_currentPage == 1)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: TextButton(
@@ -249,7 +236,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: (_currentPage == (widget.isVerified ? 1 : 2) &&
+                          onPressed: (_currentPage == 1 &&
                                   _selectedConstituencyName == null)
                             ? null
                             : _nextPage,

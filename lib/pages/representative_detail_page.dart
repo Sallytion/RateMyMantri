@@ -40,7 +40,6 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
   RepresentativeDetail? _detail;
   bool _isLoading = true;
   bool _isAuthenticated = false;
-  bool _isVerified = false;
   Rating? _userRating;
   bool _loadingRating = true;
   int _ratingsRefreshKey = 0;
@@ -89,7 +88,6 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
       _isAuthenticated = await AuthStorageService.isAuthenticated();
 
       if (_isAuthenticated) {
-        _isVerified = await AuthStorageService.getAadhaarVerificationStatus();
         final rating = await _ratingsService.getUserRatingForRepresentative(
           int.parse(widget.representativeId),
         );
@@ -156,7 +154,6 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           representativeName: _detail?.name ?? '',
           officeType: _detail?.officeType ?? '',
           isDarkMode: widget.isDarkMode,
-          isVerified: _isVerified,
           existingRating: _userRating,
           onRatingSubmitted: () {
             _prefetchService.invalidate(widget.representativeId);
@@ -372,8 +369,8 @@ class _RepresentativeDetailPageState extends State<RepresentativeDetailPage> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _buildStatItem(
-              _detail!.assets != null ? _formatCurrency(_detail!.assets!) : 'N/A',
-              LanguageService.tr('total_assets'),
+              _detail!.netWorth != null ? _formatCurrency(_detail!.netWorth!) : 'N/A',
+              LanguageService.tr('net_worth_label'),
               textColor,
               subtextColor,
             ),

@@ -117,6 +117,24 @@ class _SearchPageState extends State<SearchPage> {
     return Formatters.formatCurrency(amount, showSymbol: false);
   }
 
+  String? _validatedImageUrl(String? rawUrl) {
+    if (rawUrl == null) return null;
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) return null;
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !uri.isAbsolute) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+
+    // Skip image formats that are frequently unsupported by Android decoders.
+    final lowerPath = uri.path.toLowerCase();
+    const unsupportedExts = ['.svg', '.avif', '.heic', '.heif', '.ico'];
+    final hasUnsupportedExt = unsupportedExts.any(lowerPath.endsWith);
+    if (hasUnsupportedExt) return null;
+
+    return uri.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
@@ -233,11 +251,12 @@ class _SearchPageState extends State<SearchPage> {
 
   // ─── Loading shimmer ─────────────────────────────────────────────
   Widget _buildLoadingState(bool isDarkMode) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        children: List.generate(5, (_) => SearchResultSkeleton(isDarkMode: isDarkMode)),
-      ),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 20),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return SearchResultSkeleton(isDarkMode: isDarkMode);
+      },
     );
   }
 
@@ -278,15 +297,47 @@ class _SearchPageState extends State<SearchPage> {
 
   // ─── Results list ────────────────────────────────────────────────
   Widget _buildResultsList(Color textColor, Color subtextColor, bool isDarkMode) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      itemCount: _searchResults.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final rep = _searchResults[index];
-        _prefetchService.prefetch(rep.id.toString());
-        return _buildResultCard(rep, textColor, subtextColor, isDarkMode);
-      },
+    final listBg = isDarkMode ? ThemeService.bgElev : ThemeService.lightCard;
+    final borderColor = isDarkMode ? ThemeService.bgBorder : ThemeService.lightBorder;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: listBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor, width: 0.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: List.generate(_searchResults.length, (index) {
+              final rep = _searchResults[index];
+              _prefetchService.prefetch(rep.id.toString());
+
+              return Column(
+                children: [
+                  _buildResultCard(rep, textColor, subtextColor, isDarkMode),
+                  if (index != _searchResults.length - 1)
+                    Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: borderColor,
+                      indent: 14,
+                      endIndent: 14,
+                    ),
+                ],
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
@@ -295,194 +346,144 @@ class _SearchPageState extends State<SearchPage> {
     Representative rep, Color textColor, Color subtextColor, bool isDarkMode,
   ) {
     final partyColor = PartyUtils.getPartyColor(rep.party);
-    final rating = rep.averageRating;
-    final cardBg = isDarkMode ? ThemeService.bgElev : ThemeService.lightCard;
+    final tagBg = isDarkMode
+        ? const Color(0xFF3A392E)
+        : const Color(0xFFE8DFC7);
+    final tagText = isDarkMode ? const Color(0xFFD5C28A) : const Color(0xFF6E5A25);
+    final location = '${rep.constituency}, ${rep.state}'.trim();
+    final safeImageUrl = _validatedImageUrl(rep.imageUrl);
 
     return GestureDetector(
       onTap: () => _selectRepresentative(rep),
       onLongPress: () => _prefetchService.prefetch(rep.id.toString()),
       child: Container(
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDarkMode ? ThemeService.bgBorder : ThemeService.lightBorder,
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Main content row ──────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-              child: Row(
-                children: [
-                  // Avatar with party color ring
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: partyColor.withValues(alpha: 0.5), width: 2.5),
-                    ),
-                    child: Hero(
-                      tag: 'rep_avatar_${rep.id}',
-                      child: ClipOval(
-                        child: rep.imageUrl != null && rep.imageUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: rep.imageUrl!,
-                                fit: BoxFit.cover,
-                                width: 54, height: 54,
-                                memCacheWidth: 108, memCacheHeight: 108,
-                                placeholder: (_, __) => Shimmer.fromColors(
-                                  baseColor: Colors.grey[300]!,
-                                  highlightColor: Colors.grey[100]!,
-                                  child: Container(color: ThemeService.lightCard),
-                                ),
-                                errorWidget: (_, __, ___) => PlaceholderAvatar(name: rep.fullName),
-                              )
-                            : PlaceholderAvatar(name: rep.fullName),
+            // Top row with name/location and right-side net worth price tag.
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (rep.netWorth != null)
+                  Positioned(
+                    right: -14,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: tagBg,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          bottomLeft: Radius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        '\u20B9${_formatCurrency(rep.netWorth!)}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: tagText,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-
-                  // Name + location
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          rep.fullName,
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            letterSpacing: -0.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                Padding(
+                  padding: EdgeInsets.only(right: rep.netWorth != null ? 128 : 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: partyColor.withValues(alpha: 0.45), width: 2),
                         ),
-                        const SizedBox(height: 3),
-                        Row(
+                        child: Hero(
+                          tag: 'rep_avatar_${rep.id}',
+                          child: ClipOval(
+                            child: safeImageUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: safeImageUrl,
+                                    fit: BoxFit.cover,
+                                    width: 54,
+                                    height: 54,
+                                    memCacheWidth: 108,
+                                    memCacheHeight: 108,
+                                    placeholder: (_, __) => Shimmer.fromColors(
+                                      baseColor: Colors.grey[300]!,
+                                      highlightColor: Colors.grey[100]!,
+                                      child: Container(color: ThemeService.lightCard),
+                                    ),
+                                    errorWidget: (_, __, ___) => PlaceholderAvatar(name: rep.fullName),
+                                  )
+                                : PlaceholderAvatar(name: rep.fullName),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.location_on_rounded, size: 12,
-                              color: subtextColor.withValues(alpha: 0.6)),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                '${rep.constituency}, ${rep.state}',
-                                style: TextStyle(color: subtextColor, fontSize: 12, height: 1.2),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            Row(
+                              children: [
+                                Flexible(
+                                  fit: FlexFit.loose,
+                                  child: Text(
+                                    rep.fullName,
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      letterSpacing: -0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(color: partyColor.withValues(alpha: 0.8), width: 1.2),
+                                  ),
+                                  child: Text(
+                                    rep.party.length > 12 ? '${rep.party.substring(0, 12)}..' : rep.party,
+                                    style: TextStyle(
+                                      color: partyColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_rounded, size: 12,
+                                    color: subtextColor.withValues(alpha: 0.65)),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    location,
+                                    style: TextStyle(color: subtextColor, fontSize: 12, height: 1.2),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-
-                  // Rating on right
-                  if (rating != null) ...[
-                    const SizedBox(width: 8),
-                    Column(
-                      children: [
-                        Text(
-                          rating.toStringAsFixed(1),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: List.generate(5, (i) => Icon(
-                            i < rating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
-                            size: 10,
-                            color: i < rating.round() ? const Color(0xFFFFB800) : subtextColor.withValues(alpha: 0.3),
-                          )),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // ── Bottom strip: party + badges ──────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? partyColor.withValues(alpha: 0.08)
-                    : partyColor.withValues(alpha: 0.06),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Party pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: partyColor,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      rep.party.length > 10 ? '${rep.party.substring(0, 10)}..' : rep.party,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
                       ),
-                    ),
+                    ],
                   ),
-                  const Spacer(),
-                  // Net worth badge
-                  if (rep.netWorth != null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.account_balance_wallet_rounded, size: 12,
-                          color: isDarkMode ? const Color(0xFF66BB6A) : const Color(0xFF43A047)),
-                        const SizedBox(width: 4),
-                        Text(
-                          '\u20B9${_formatCurrency(rep.netWorth!)}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode ? const Color(0xFF66BB6A) : const Color(0xFF43A047),
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (rep.netWorth != null && rep.totalRatings != null && rep.totalRatings! > 0)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text('\u00B7',
-                        style: TextStyle(color: subtextColor.withValues(alpha: 0.3), fontSize: 12)),
-                    ),
-                  // Ratings count
-                  if (rep.totalRatings != null && rep.totalRatings! > 0)
-                    Text(
-                      '${rep.totalRatings} ${rep.totalRatings == 1 ? 'rating' : 'ratings'}',
-                      style: TextStyle(fontSize: 11, color: subtextColor, fontWeight: FontWeight.w500),
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

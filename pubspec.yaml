@@ -121,7 +121,6 @@ flutter:
   assets:
     - lib/assets/logo/rate_my_mantri_dark.png
     - lib/assets/logo/rate_my_mantri_light.png
-    - lib/assets/logo/aadhaar.svg
     - assets/l10n/
 
   # An image asset can refer to one or more resolution-specific "variants", see

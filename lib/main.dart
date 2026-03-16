@@ -8,6 +8,7 @@ import 'pages/onboarding_page.dart';
 import 'pages/main_screen.dart';
 import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
+import 'config/api_config.dart';
 import 'services/auth_storage_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
@@ -19,6 +20,9 @@ void main() async {
   
   // Pre-fetch SharedPreferences singleton (used by every service)
   await PrefsService.init();
+
+  // Load debug-only server override (release/profile stay on default base URL)
+  ApiConfig.loadFromPrefs();
   
   // Initialize language service (loads preference + inditrans engine)
   await LanguageService.init();
@@ -125,10 +129,6 @@ class _AuthCheckerState extends State<AuthChecker> {
         final userData = await AuthStorageService.fetchUserProfile();
 
         if (userData != null && mounted) {
-          // User is authenticated, get verification status
-          final isVerified =
-              await AuthStorageService.getAadhaarVerificationStatus();
-          
           if (!mounted) return;
 
           // Check if onboarding has been completed
@@ -139,7 +139,6 @@ class _AuthCheckerState extends State<AuthChecker> {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => OnboardingPage(
                 userName: userData['name'] ?? 'User',
-                isVerified: isVerified,
                 userEmail: userData['email'],
                 userId: userData['googleId'] ?? '',
                 photoUrl: userData['picture'],
@@ -153,7 +152,6 @@ class _AuthCheckerState extends State<AuthChecker> {
             MaterialPageRoute(
               builder: (context) => MainScreen(
                 userName: userData['name'] ?? 'User',
-                isVerified: isVerified,
                 userEmail: userData['email'],
                 userId: userData['googleId'],
                 photoUrl: userData['picture'],

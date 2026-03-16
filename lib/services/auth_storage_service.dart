@@ -7,7 +7,6 @@ class AuthStorageService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userDataKey = 'user_data';
-  static const String _aadhaarVerifiedKey = 'aadhaar_verified';
 
   // Save tokens after successful authentication
   static Future<void> saveTokens({
@@ -53,18 +52,6 @@ class AuthStorageService {
     return accessToken != null && accessToken.isNotEmpty;
   }
 
-  // Save Aadhaar verification status
-  static Future<void> saveAadhaarVerificationStatus(bool isVerified) async {
-    final prefs = PrefsService.instance;
-    await prefs.setBool(_aadhaarVerifiedKey, isVerified);
-  }
-
-  // Get Aadhaar verification status from local storage
-  static Future<bool> getAadhaarVerificationStatus() async {
-    final prefs = PrefsService.instance;
-    return prefs.getBool(_aadhaarVerifiedKey) ?? false;
-  }
-
   // Clear all auth data (for logout)
   static Future<void> clearAuthData() async {
     final prefs = PrefsService.instance;
@@ -72,7 +59,6 @@ class AuthStorageService {
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userDataKey);
-    await prefs.remove(_aadhaarVerifiedKey);
   }
 
   // Save complete auth response
@@ -195,10 +181,6 @@ class AuthStorageService {
 
         // Save user data
         await saveUserData(userData);
-
-        // Save Aadhaar verification status (check is_verified field)
-        final isAadhaarVerified = userData['is_verified'] == true;
-        await saveAadhaarVerificationStatus(isAadhaarVerified);
 
         return userData;
       } else if (response.statusCode == 401) {

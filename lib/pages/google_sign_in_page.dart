@@ -56,7 +56,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
         final idToken = authentication.idToken;
 
         if (idToken != null && mounted) {
-          await _authenticateWithBackend(idToken, account);
+          await _authenticateWithBackend(idToken);
         }
       }
     } catch (e) {
@@ -91,7 +91,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
       }
 
       // Authenticate with backend
-      await _authenticateWithBackend(idToken, account);
+      await _authenticateWithBackend(idToken);
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -104,7 +104,6 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
 
   Future<void> _authenticateWithBackend(
     String idToken,
-    GoogleSignInAccount account,
   ) async {
     try {
       final response = await ApiClient.instance.post(
@@ -119,13 +118,8 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
         // Save tokens and user data locally
         await AuthStorageService.saveAuthResponse(responseData);
 
-
-        // Fetch user profile to check Aadhaar verification status
-        final userProfile = await AuthStorageService.fetchUserProfile();
-        final isAadhaarVerified = userProfile?['is_verified'] == true;
-
         if (mounted) {
-          _navigateToMainScreen(account, isVerified: isAadhaarVerified);
+          _navigateToMainScreen();
         }
       } else {
         throw Exception(
@@ -143,10 +137,7 @@ class _GoogleSignInPageState extends State<GoogleSignInPage> {
     }
   }
 
-  void _navigateToMainScreen(
-    GoogleSignInAccount account, {
-    required bool isVerified,
-  }) {
+  void _navigateToMainScreen() {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
